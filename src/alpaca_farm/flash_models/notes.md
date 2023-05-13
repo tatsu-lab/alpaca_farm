@@ -1,0 +1,2 @@
+- Only put the flash-attn models here. Don't put reward model or other model here.
+- in the future, we can separate this out as a package under tatsu-lab, if needed.'
