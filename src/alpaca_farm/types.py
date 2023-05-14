@@ -8,6 +8,7 @@ from torch import Tensor
 AnyPath = Union[str, os.PathLike]
 AnyPathOrNone = Optional[AnyPath]
 
+Numeric = Union[int, float]
 Tensors = Sequence[Tensor]
 TensorOrTensors = Union[Tensor, Tensors]
 TensorList = List[Tensor]

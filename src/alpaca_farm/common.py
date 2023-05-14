@@ -22,7 +22,7 @@ from torch.distributed.fsdp import StateDictType
 from transformers.trainer import WEIGHTS_NAME, is_deepspeed_zero3_enabled
 
 from . import constants, logging
-from .types import AnyPath, AnyPathOrNone,
+from .types import AnyPath, AnyPathOrNone
 from torch import Tensor
 from typing import Callable, Dict, Optional, Sequence, Union
 
@@ -106,8 +106,42 @@ def make_generative_lm(
         flash_attn = False
 
     if flash_attn:
-        model_cls = hf_flash_llama.LlamaForCausalLM
+        raise NotImplementedError("Flash attention is not supported yet.")
+        # model_cls = hf_flash_llama.LlamaForCausalLM
     else:
         model_cls = transformers.LlamaForCausalLM
 
     return model_cls.from_pretrained(model_name_or_path, **kwargs)
+
+def let_model_save_mem_when_zero_grad(model: nn.Module):
+    def new_zero_grad(self, set_to_none: bool = True) -> None:
+        r"""Sets gradients of all model parameters to zero. See similar function
+        under :class:`torch.optim.Optimizer` for more context.
+
+        Args:
+            set_to_none (bool): instead of setting to zero, set the grads to None.
+                See :meth:`torch.optim.Optimizer.zero_grad` for details.
+        """
+        if getattr(self, "_is_replica", False):
+            warnings.warn(
+                "Calling .zero_grad() from a module created with nn.DataParallel() has no effect. "
+                "The parameters are copied (in a differentiable manner) from the original module. "
+                "This means they are not leaf nodes in autograd and so don't accumulate gradients. "
+                "If you need gradients in your forward method, consider using autograd.grad instead."
+            )
+
+        for p in self.parameters():
+            if p.grad is not None:
+                if set_to_none:
+                    p.grad = None
+                else:
+                    if p.grad.grad_fn is not None:
+                        p.grad.detach_()
+                    else:
+                        p.grad.requires_grad_(False)
+                    p.grad.zero_()
+
+    # Make zero_grad `set_to_none=True` by default.
+    # Need this runtime method patching, since self is used within zero_grad.
+    model.zero_grad = types.MethodType(new_zero_grad, model)
+    return model

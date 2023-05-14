@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 import torch
@@ -16,51 +16,18 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: Optional[str] = field(default="gpt2-xl")
+    model_name_or_path: str = field(default=constants.FAST_MODEL_CACHE_DIR / "llama-7b")
 
 
 @dataclass
 class DataArguments:
-    train_file_path: Optional[str] = field(
-        default=None,
-        metadata={"help": "Path to the training data. Either `train_file_path` or `train_sql` needs to be specified."},
+    train_splits: Tuple[str] = field(
+        default=('sft',),
+        metadata={"help": "Splits to use for training."},
     )
-    feedme_file_path: Optional[str] = field(
-        default=None,
-        metadata={"help": "Path to the feedme data. Either `feedme_file_path` or `feedme_sql` needs to be specified."},
-    )
-    eval_file_path: Optional[str] = field(
-        default=None,
-        metadata={
-            "help": "Path to the evaluation data. If none of `eval_file_path` or `eval_sql` are "
-                    "specified, we do an `eval_portion` random split from the training set."
-        },
-    )
-    train_sql: Optional[str] = field(
-        default=None,
-        metadata={"help": "SQL query to select training data. Overloaded for both SFT and reward conditioning."},
-    )
-    train_db_key: Optional[str] = field(
-        default="instruction_following",
-        metadata={"help": "Name of the database for SQL queries."},
-    )
-    feedme_sql: Optional[str] = field(
-        default=None,
-        metadata={"help": "SQL query to select FEEDME data."},
-    )
-    feedme_db_key: Optional[str] = field(
-        default="instruction_following",
-        metadata={"help": "Name of the database for SQL queries."},
-    )
-    # TODO should remove as it's not used in supervised. RL and RM seem to use it but should use
-    #  `gold_eval_sql_where` or `gold_val_sql_where` instead to avoid duplicates. See #441
-    eval_sql: Optional[str] = field(
-        default=None,
-        metadata={"help": "SQL query to select validation data."},
-    )
-    prompt_name: Optional[str] = field(
-        default=None,
-        metadata={"help": "Name of the prompt to use. If using SQL for data loading, prompt_name must be provided."},
+    prompt_name: str = field(
+        default="v0_{tag}",
+        metadata={"help": "Name of the prompt to use."},
     )
 
 @dataclass
@@ -102,7 +69,7 @@ class TrainingArguments(transformers.TrainingArguments):
                 logger.warning("apex is not installed. Reverting to native non-fused Adam.")
                 self.optim = "adamw_torch"
 
-def pretrain():
+def sft():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     os.environ["WANDB_PROJECT"] = training_args.wandb_project
@@ -140,10 +107,6 @@ def pretrain():
 
     # Collect special tokens. Only add if non-existent.
     special_tokens_dict = dict(additional_special_tokens=[])
-    if data_args.prompt_postprocessor is not None:
-        for token in data_args.prompt_postprocessor.special_tokens:
-            if token not in tokenizer.get_vocab():
-                special_tokens_dict["additional_special_tokens"].append(token)
     if tokenizer.pad_token is None:
         special_tokens_dict["pad_token"] = training_args.pad_token
     if tokenizer.eos_token is None:
@@ -169,7 +132,6 @@ def pretrain():
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        callbacks=training_args.callbacks,
         **data_module,
     )
 
@@ -181,3 +143,6 @@ def pretrain():
     common.safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
     if training_args.should_save:
         logger.warning("hooray again! model saving worked.")
+
+if __name__ == "__main__":
+    sft()
