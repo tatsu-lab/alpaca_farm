@@ -168,3 +168,80 @@ def unpad_input(padded: torch.Tensor, attention_mask: torch.Tensor) -> tuple[tor
         return bert_padding.pad_input(unpadded, indices, batch_size, padded_seqlen)
 
     return unpadded, pad_back, cu_seqlens, max_seqlen
+
+def safe_save_model_for_hf_trainer(
+        trainer: transformers.Trainer, output_dir: str, give_rw_access=True, rank0_only=True
+):
+    """Collects the state dict and dump to disk."""
+    now = time.perf_counter()
+
+    if trainer.fsdp is not None:
+        # NOTE(rtaori): technically should be rank0_only=True (otherwise duplicates model in RAM),
+        # but currently there seems to be a bug in FSDP that causes it to hang.
+        # Migration to Pytorch 2 should fix this.
+        # Once we migrate, we can also implement more efficient loading:
+        # https://github.com/pytorch/pytorch/blob/master/torch/distributed/fsdp/api.py#L286-L295
+        # NOTE(tianyi): tested on sphinx6, seems to work fine with rank0_only=False
+        cfg = FullStateDictConfig(offload_to_cpu=True, rank0_only=rank0_only)
+        with FSDP.state_dict_type(trainer.model, StateDictType.FULL_STATE_DICT, cfg):
+            state_dict = trainer.model.state_dict()
+            if trainer.args.should_save:
+                trainer._save(output_dir, state_dict=state_dict)  # noqa
+
+    elif trainer.deepspeed is not None:
+        # --- The stuff below is almost a copy from transformers.trainer.Trainer.save_model (transformers==4.27.3) ---
+        # this takes care of everything as long as we aren't under zero3
+        if trainer.args.should_save:
+            trainer._save(output_dir)
+
+        if is_deepspeed_zero3_enabled():
+            # It's too complicated to try to override different places where the weights dump gets
+            # saved, so since under zero3 the file is bogus, simply delete it. The user should
+            # either use deepspeed checkpoint to resume or to recover full weights use
+            # zero_to_fp32.py stored in the checkpoint.
+            if trainer.args.should_save:
+                file = os.path.join(output_dir, WEIGHTS_NAME)
+                if os.path.isfile(file):
+                    logger.warning(f"deepspeed zero3: removing {file}, see zero_to_fp32.py to recover weights")
+                    os.remove(file)
+
+            # now save the real model if stage3_gather_16bit_weights_on_model_save=True
+            # if false it will not be saved.
+            # This must be called on all ranks
+            if not trainer.deepspeed.save_16bit_model(output_dir, WEIGHTS_NAME):
+                logger.warning(
+                    "deepspeed.save_16bit_model didn't save the model, since"
+                    " stage3_gather_16bit_weights_on_model_save=false. Saving the full checkpoint instead, use"
+                    " zero_to_fp32.py to recover weights"
+                )
+                trainer.deepspeed.save_checkpoint(output_dir)
+                # --- End of shameless copy ---
+
+                # Auto-convert the checkpoint to fp32 for easier downstream use.
+                # Only rank0 shall do the checkpoint conversion to prevent race conditions.
+                if trainer.args.should_save:
+                    try:
+                        os.system(
+                            f"python {output_dir}/zero_to_fp32.py  '{output_dir}' '{output_dir}/pytorch_model.bin'"
+                        )
+                    except Exception as e:
+                        logger.fatal(f"Failed to convert zero3 checkpoint to fp32: {e}")
+
+    else:  # Also support saving for non-FSDP models.
+        # NOTE(lxuechen): Saving and loading T5 has weird pickle issues due to device map.
+        #  Wasn't able to exactly pinpoint. But saving to and loading from CPU seems to work.
+        #  In principle, trainer.save_model() should do the same thing, but breaks in practice.
+        #  We drop T5 support.
+        state_dict = trainer.model.state_dict()
+        if trainer.args.should_save:
+            cpu_state_dict = {key: value.cpu() for key, value in state_dict.items()}
+            del state_dict
+            trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
+
+    if trainer.args.should_save:
+        if give_rw_access:
+            try:
+                os.system(f"chmod -R a+xwr {output_dir}")
+            except Exception as e:
+                logger.fatal(f"Failed to give read-write access to {output_dir}: {e}")
+        logger.warning(f"Saving model took {time.perf_counter() - now:.2f} seconds.")
