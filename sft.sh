@@ -1,5 +1,5 @@
 RUNNAME="test_sft"
-torchrun --nproc_per_node=8 --master_port=1234 supervised.py \
+torchrun --nproc_per_node=8 --master_port=1234 examples/supervised.py \
 --fp16 False \
 --bf16 True \
 --seed 42 \

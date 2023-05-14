@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import transformers
 from transformers import Trainer
-from src.alpaca_farm import constants, utils, common, data_preprocessor
+from alpaca_farm import constants, utils, common, data_preprocessor
 
 logger = logging.getLogger(__name__)
 
