@@ -39,6 +39,7 @@ try:
 except ImportError as e:
     logger.warning(f"Failed to import flash attention llama with error {e}")
 
+
 def apex_is_installed():
     try:
         import apex
@@ -46,6 +47,7 @@ def apex_is_installed():
         return True
     except ImportError as _:
         return False
+
 
 class staggered_object_creation(object):
     """
@@ -81,6 +83,7 @@ class staggered_object_creation(object):
 
         return decorator
 
+
 def make_generative_lm(
     model_name_or_path: str,
     flash_attn: bool,
@@ -106,6 +109,7 @@ def make_generative_lm(
         model_cls = transformers.LlamaForCausalLM
 
     return model_cls.from_pretrained(model_name_or_path, **kwargs)
+
 
 def let_model_save_mem_when_zero_grad(model: nn.Module):
     def new_zero_grad(self, set_to_none: bool = True) -> None:
@@ -140,6 +144,7 @@ def let_model_save_mem_when_zero_grad(model: nn.Module):
     model.zero_grad = types.MethodType(new_zero_grad, model)
     return model
 
+
 def pad_to_multiples_of_x(tensor: Tensor, x: int = 8):
     """Pad a tensor along the batch dimension to a multiple of x."""
     total_nnz, hidden_size = tensor.size()
@@ -169,8 +174,9 @@ def unpad_input(padded: torch.Tensor, attention_mask: torch.Tensor) -> tuple[tor
 
     return unpadded, pad_back, cu_seqlens, max_seqlen
 
+
 def safe_save_model_for_hf_trainer(
-        trainer: transformers.Trainer, output_dir: str, give_rw_access=True, rank0_only=True
+    trainer: transformers.Trainer, output_dir: str, give_rw_access=True, rank0_only=True
 ):
     """Collects the state dict and dump to disk."""
     now = time.perf_counter()
@@ -245,3 +251,79 @@ def safe_save_model_for_hf_trainer(
             except Exception as e:
                 logger.fatal(f"Failed to give read-write access to {output_dir}: {e}")
         logger.warning(f"Saving model took {time.perf_counter() - now:.2f} seconds.")
+
+
+def unpack_dict(d: Dict, keys: Sequence[str], return_type: type = tuple) -> Union[Sequence, Dict]:
+    if return_type in (tuple, list):
+        return return_type(d[key] for key in keys)
+    elif return_type == dict:
+        return {key: d[key] for key in keys}
+    else:
+        raise ValueError(f"Unknown return_type: {return_type}")
+
+
+def model_name_or_path_exists(model_name_or_path: AnyPath) -> bool:
+    try:
+        transformers.PretrainedConfig.get_config_dict(model_name_or_path)
+    except OSError:
+        return os.path.exists(Path(model_name_or_path) / "trainer_state.json")
+    return True
+
+
+# TODO(lxuechen): Simplify this logic.
+def get_pretrained_model_name_with_model_name_or_path(model_name_or_path: AnyPathOrNone) -> Optional[str]:
+    """Get the name of the pretrained model with a model name or path.
+
+    Examples:
+    >>> get_pretrained_model_name_with_model_name_or_path(
+        "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_opt_6b_clean_v0_3ep")
+    "facebook/opt-6.7b"  # Fine-tuned model started from this model.
+
+    >>> get_pretrained_model_name_with_model_name_or_path("facebook/opt-125m")
+    "facebook/opt-125m"  # This should not be "opt-125m".
+    """
+    if model_name_or_path is None:
+        return None
+
+    if not model_name_or_path_exists(model_name_or_path):
+        raise ValueError(f"Model name or path does not exist: {model_name_or_path}")
+
+    pretrained_model_name = model_name_or_path
+
+    # While `model_name_or_path` points to a dir, find the original pretrained model name by recursively going down the
+    # chain. This works by recursively extracting the name/path to the parent model from the `config.json` file, until
+    # we get a non-path name.
+    while os.path.isdir(pretrained_model_name):
+        pretrained_model_name = utils.jload(os.path.join(pretrained_model_name, "config.json"))["_name_or_path"]
+
+    # When recursive finding doesn't work, we revert to the dumb hardcoded rule. This only supports llama models so far.
+    if pretrained_model_name not in constants.MODEL_NAME_TO_FAMILY:
+        logger.warning(
+            "One of the `_name_or_path` to the root node is not a pretrained model name or local path on disk. "
+            "This may be due to copying checkpoints across machines. "
+            "Falling back to hardcoded rule to figure out the pretrained model based on config.json."
+        )
+        config = utils.jload(os.path.join(model_name_or_path, "config.json"))
+        model_config = unpack_dict(config, keys=("model_type", "num_hidden_layers", "hidden_size"), return_type=dict)
+        pretrained_model_name = [k for k, v in constants.MODEL_NAME_TO_CONFIG.items() if v == model_config][0]
+
+    return str(pretrained_model_name)
+
+
+def get_transformer_hidden_size(model: transformers.PreTrainedModel):
+    if isinstance(model, transformers.GPT2LMHeadModel):
+        hidden_size_attr_name = "n_embd"
+    elif isinstance(model, transformers.OPTForCausalLM):
+        hidden_size_attr_name = "word_embed_proj_dim"
+    elif isinstance(model, transformers.T5ForConditionalGeneration):
+        hidden_size_attr_name = "d_model"
+    else:
+        # Hack to deal with the fact that transformers library changed the LLaMA model name.
+        llama_cls = getattr(
+            transformers, "LLaMAForCausalLM" if hasattr(transformers, "LLaMAForCausalLM") else "LlamaForCausalLM"
+        )
+        if isinstance(model, llama_cls):
+            hidden_size_attr_name = "hidden_size"
+        else:
+            raise ValueError(f"Unknown base_model type: {type(model)}")
+    return getattr(model.config, hidden_size_attr_name)
