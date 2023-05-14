@@ -95,6 +95,7 @@ def sft():
             device_map=device_map,
         )
         common.let_model_save_mem_when_zero_grad(model)
+    breakpoint()
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
