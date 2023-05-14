@@ -1,18 +1,22 @@
-# Dataset, DataLoader, Collator goes here. 
+# Dataset, DataLoader, Collator goes here.
 # Tokenization also goes here.
 # maps to data_utils.py and data_preprocess.py
 import copy
-from . import constants
-from datasets import load_dataset
 import dataclasses
-import transformers
+from typing import Dict, Sequence, Union
+
 import torch
+import transformers
+from datasets import load_dataset
 from torch.utils.data import Dataset
-from typing import Sequence, Union, Optional, Dict
+
 from src.alpaca_farm import logging, utils
-from src.alpaca_farm.types import AnyPathOrNone, Tensor
+from src.alpaca_farm.types import Tensor
+
+from . import constants
 
 logger = logging.get_logger(__name__)
+
 
 def _tokenize_fn(strings: Sequence[str], tokenizer: transformers.PreTrainedTokenizer) -> dict:
     """Tokenize a list of strings and return the tokenized content as well metadata (e.g., truncation statistics)."""
@@ -74,11 +78,12 @@ def _tokenize_fn(strings: Sequence[str], tokenizer: transformers.PreTrainedToken
         ),
     )
 
+
 def preprocess(
-        sources: Sequence[str],
-        targets: Sequence[str],
-        tokenizer: transformers.PreTrainedTokenizer,
-        verbose=True,
+    sources: Sequence[str],
+    targets: Sequence[str],
+    tokenizer: transformers.PreTrainedTokenizer,
+    verbose=True,
 ) -> dict[str, Union[torch.Tensor, Sequence[torch.Tensor]]]:
     """Tokenize each example, create the labels, and optionally store the lightweight form on disk.
 
@@ -125,7 +130,8 @@ def preprocess(
         logger.warning(f"Tokenization metadata:\n{utils.jdumps(packaged_data['tokenization_metadata'])}")
     return packaged_data
 
-def make_prompt(example, prompt_dict: dict) -> str:
+
+def make_prompt(example, prompt_dict: dict) -> dict:
     """Formats an example with a prompt.
 
     Parameters
@@ -155,6 +161,7 @@ def make_prompt(example, prompt_dict: dict) -> str:
 
     return dict(prompt=formatted_prompt)
 
+
 class SFTDataset(Dataset):
     def __init__(
         self,
@@ -181,6 +188,7 @@ class SFTDataset(Dataset):
     def __getitem__(self, i) -> Dict[str, Tensor]:
         return dict(input_ids=self.input_ids[i], labels=self.labels[i])
 
+
 @dataclasses.dataclass
 class DataCollatorForSFTDataset(object):
     tokenizer: transformers.PreTrainedTokenizer
@@ -199,12 +207,15 @@ class DataCollatorForSFTDataset(object):
             attention_mask=attention_mask,
         )
 
+
 def make_supervised_data_module(
-        tokenizer: transformers.PreTrainedTokenizer,
-        training_args,
-        data_args,
+    tokenizer: transformers.PreTrainedTokenizer,
+    training_args,
+    data_args,
 ):
-    alpaca_instructions = load_dataset("tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token='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')
+    alpaca_instructions = load_dataset(
+        "tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token="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"
+    )
     prompt_dict = {
         "prompt_inputs": open(f"src/alpaca_farm/prompts/{data_args.prompt_name.format(tag='inputs')}.txt").read(),
         "prompt_noinputs": open(f"src/alpaca_farm/prompts/{data_args.prompt_name.format(tag='noinputs')}.txt").read(),
@@ -212,8 +223,12 @@ def make_supervised_data_module(
     alpaca_instructions = alpaca_instructions.map(lambda row: make_prompt(row, prompt_dict))
 
     # support for multiple splits
-    train_prompts = utils.flatten_nested_pystruct([alpaca_instructions[split]["prompt"] for split in data_args.train_splits])
-    train_outputs = utils.flatten_nested_pystruct([alpaca_instructions[split]["output"] for split in data_args.train_splits])
+    train_prompts = utils.flatten_nested_pystruct(
+        [alpaca_instructions[split]["prompt"] for split in data_args.train_splits]
+    )
+    train_outputs = utils.flatten_nested_pystruct(
+        [alpaca_instructions[split]["output"] for split in data_args.train_splits]
+    )
 
     train_dataset = SFTDataset(
         tokenizer=tokenizer,
