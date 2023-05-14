@@ -44,7 +44,7 @@ class DataArguments:
         default=500,
         metadata={
             "help": "When no eval data is specified (`eval_file_path` and `eval_sql` are both None), "
-                    "controls the number of samples from the original training set split out to use for evaluation."
+            "controls the number of samples from the original training set split out to use for evaluation."
         },
     )
     dedup_instruction: bool = field(
@@ -72,14 +72,11 @@ class DataArguments:
         if any([self.train_sql, self.eval_sql]) and self.prompt_name is None:
             raise ValueError("If using SQL for data loading, prompt_name must be provided.")
 
+        # TODO: ordinary to pairwise construction.
         train_df_postprocessor = []
         eval_df_postprocessor = []
         if self.dedup_instruction:
             train_df_postprocessor.append(DedupInstructionDFPostProcessor())
-        if self.randomize_label_frac > 0:
-            train_df_postprocessor.append(
-                RandomizeRewardModelingLabelsDFPostProcessor(self.randomize_label_frac, self.randomize_label_seed)
-            )
 
         self.train_df_postprocessor = SequentialPostProcessor(train_df_postprocessor)
         self.eval_df_postprocessor = SequentialPostProcessor(eval_df_postprocessor)
@@ -102,30 +99,30 @@ class TrainingArguments(transformers.TrainingArguments):
         default_factory=lambda: ["index_0", "index_1", "choice"],
         metadata={
             "help": "Names of the labels in the dataset. "
-                    "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
-                    "By default, the trainer throws away columns it doesn't recognize when creating the "
-                    "`train_dataloader` (see `_remove_unused_columns`). "
+            "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
+            "By default, the trainer throws away columns it doesn't recognize when creating the "
+            "`train_dataloader` (see `_remove_unused_columns`). "
         },
     )
     padding: Literal["max_length", "longest"] = field(
         default="longest",
         metadata={
             "help": "Padding strategy. If 'max_length', pads to `model_max_length` always; this might lead to some "
-                    "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
+            "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
         },
     )
     initialize_model_on_cpu: bool = field(
         default=False,
         metadata={
             "help": "Whether to initialize the model on CPU. "
-                    "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
+            "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
         },
     )
     end_sequence_with_eos: bool = field(
         default=False,
         metadata={
             "help": "Whether to end sequences with EOS. "
-                    "Ending with EOS might help the reward model realize it's time to predict."
+            "Ending with EOS might help the reward model realize it's time to predict."
         },
     )
 
@@ -212,12 +209,12 @@ def main():
         use_fast=False,  # Fast GPT2 tokenizer can break when we start counting the truncations.
     )
     tokenizer.padding = training_args.padding
+    # TODO: fix data loading.
     data_module = data_utils.make_binary_reward_modeling_data_module(
         tokenizer=tokenizer,
         data_args=data_args,
         training_args=training_args,
     )
-    print(f"number of training examples: {len(data_module['train_dataset'])}")
 
     trainer = Trainer(
         model=model,
