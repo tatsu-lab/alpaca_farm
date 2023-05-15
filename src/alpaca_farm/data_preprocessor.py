@@ -320,6 +320,7 @@ def make_supervised_data_module(
 ):
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
+    # TODO: remove auth token at the end.
     alpaca_instructions = datasets.load_dataset(
         "tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token="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"
     )
@@ -438,9 +439,10 @@ def make_binary_reward_modeling_data_module(
     data_args,
     training_args,
 ):
+    # TODO: remove auth token at the end.
     prompt_dict = utils.jload(data_args.prompt_dict_path)
     alpaca_human_preference = datasets.load_dataset(
-        "tatsu-lab/alpaca_farm", "alpaca_human_preference", use_auth_token="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"
+        data_args.dataset_path, data_args.dataset_name, use_auth_token="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"
     )
     train_dataset = BinaryRewardModelingDataset(
         huggingface_dataset=alpaca_human_preference["preference"],

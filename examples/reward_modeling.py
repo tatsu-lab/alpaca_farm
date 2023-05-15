@@ -21,12 +21,17 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
+    dataset_path: str = field(default="tatsu-lab/alpaca_farm")
+    dataset_name: Literal["alpaca_human_preference", "alpaca_gpt4_preference"] = field(
+        default="alpaca_human_preference",
+        metadata={"help": "Name of the dataset. Fetches the human or GPT-4 preference data."},
+    )
     eval_size: int = field(
         default=500,
         metadata={"help": "Number of examples to split out from training to use for evaluation."},
     )
     prompt_dict_path: str = field(
-        default=pathlib.Path(__file__).parent / "prompt" / "v0_inputs_noinputs.json",
+        default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
     )
     convert_ordinal_to_preference: bool = field(

@@ -25,7 +25,7 @@ class DataArguments:
         metadata={"help": "Splits to use for training."},
     )
     prompt_dict_path: str = field(
-        default=pathlib.Path(__file__).parent / "prompt" / "v0_inputs_noinputs.json",
+        default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
     )
 
@@ -37,12 +37,7 @@ class TrainingArguments(transformers.TrainingArguments):
     tokenizer_cache_dir: str = field(default=constants.DEFAULT_CACHE_DIR)
     wandb_project: str = field(default=constants.WANDB_PROJECT)
     flash_attn: bool = field(default=True, metadata={"help": "Whether to use flash attention."})
-    # transformers.TrainingArguments prevents 'adamw_torch_fused' from being used for pt<2.0, even though in principle
-    # you could use it in 1.13.1.
-    # On the other hand, there have been bug reports for this native fused adamw which are unresolved.
-    # https://github.com/pytorch/pytorch/issues/90752
-    # We stick to apex fused by default.
-    optim: str = field(default="adamw_apex_fused")
+    optim: str = field(default="adamw_torch")
     model_max_length: int = field(
         default=512,
         metadata={
