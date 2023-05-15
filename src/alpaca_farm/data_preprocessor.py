@@ -167,7 +167,7 @@ def preprocess_for_reward_modeling(
     choice = torch.tensor([[_get_numeric_preference(dict_data)] for dict_data in list_dict_data])
 
     def _get_text(example: dict, output_key: str):
-        source = make_prompt(example, prompt_dict=metadata.get("prompt_dict"))
+        source = format_prompt(example, prompt_dict=metadata.get("prompt_dict"))["prompt"]
         target = preprocess_output(
             example[output_key], eos_token=tokenizer.eos_token if end_sequence_with_eos else None
         )
@@ -243,7 +243,7 @@ def format_prompt(example, prompt_dict: dict) -> dict:
     Examples
     --------
     >>> format_prompt(dict(instruction="test", input=""), prompt_dict=dict(prompt_noinputs="prompt {instruction} "))
-    "prompt test"
+    {"prompt": "prompt test"}
     """
     assert "instruction" in example and "input" in example
 
@@ -317,10 +317,11 @@ def make_supervised_data_module(
     training_args,
     data_args,
 ):
+    prompt_dict = utils.jload(data_args.prompt_dict_path)
+
     alpaca_instructions = load_dataset(
         "tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token="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"
     )
-    prompt_dict = utils.jload(data_args.prompt_dict_path)
     alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict))
 
     # support for multiple splits
@@ -436,10 +437,10 @@ def make_binary_reward_modeling_data_module(
     data_args,
     training_args,
 ):
+    prompt_dict = utils.jload(data_args.prompt_dict_path)
     alpaca_human_preference = load_dataset(
         "tatsu-lab/alpaca_farm", "alpaca_human_preference", use_auth_token="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"
     )
-    prompt_dict = utils.jload(data_args.prompt_dict_path)
     train_dataset = BinaryRewardModelingDataset(
         huggingface_dataset=alpaca_human_preference["preference"],
         prompt_dict=prompt_dict,
