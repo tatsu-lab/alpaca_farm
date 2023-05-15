@@ -41,13 +41,15 @@ class DataArguments:
             "Used to convert human preference data from A/a/b/B format to pairwise."
         },
     )
+    num_categories: int = field(default=4, metadata={"help": "Number of categories in the original preference data."})
 
     def __post_init__(self):
         train_df_postprocessor = []
         eval_df_postprocessor = []
 
         if self.convert_ordinal_to_preference:
-            train_df_postprocessor.append(convert.patch_logprob_columns)
+            # TODO: simplify.
+            train_df_postprocessor.append(convert.LogprobsColumnPatch(self.num_categories))
             train_df_postprocessor.append(convert.convert_ordinal_to_preference)
 
         self.train_df_postprocessor = data_postprocessor.SequentialPostProcessor(train_df_postprocessor)
