@@ -9,7 +9,8 @@ import numpy as np
 import torch
 import transformers
 from transformers import Trainer
-from alpaca_farm import constants, utils, common, data_preprocessor
+
+from alpaca_farm import common, constants, data_preprocessor, utils
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,13 @@ class ModelArguments:
 @dataclass
 class DataArguments:
     train_splits: Tuple[str] = field(
-        default=('sft',),
+        default=("sft",),
         metadata={"help": "Splits to use for training."},
     )
-    prompt_name: str = field(
-        default="v0_{tag}",
-        metadata={"help": "Name of the prompt to use."},
+    prompt_dict_path: str = field(
+        default=None, metadata={"help": "Path to the dictionary for the prompt to format examples."}
     )
+
 
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
@@ -47,14 +48,14 @@ class TrainingArguments(transformers.TrainingArguments):
         default=512,
         metadata={
             "help": "Maximum sequence length. Sequences will be right padded to this length (and possibly truncated)."
-                    "Enforcing a consistent max length ensures memory usage is constant and predictable."
+            "Enforcing a consistent max length ensures memory usage is constant and predictable."
         },
     )
     padding: Literal["max_length", "longest"] = field(
         default="longest",
         metadata={
             "help": "Padding strategy. If 'max_length', pads to `model_max_length` always; this might lead to some "
-                    "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
+            "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
         },
     )
     resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
@@ -68,6 +69,7 @@ class TrainingArguments(transformers.TrainingArguments):
             else:
                 logger.warning("apex is not installed. Reverting to native non-fused Adam.")
                 self.optim = "adamw_torch"
+
 
 def sft():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
@@ -143,6 +145,7 @@ def sft():
     common.safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
     if training_args.should_save:
         logger.warning("hooray again! model saving worked.")
+
 
 if __name__ == "__main__":
     sft()
