@@ -5,12 +5,11 @@ import copy
 import dataclasses
 from typing import Callable, Dict, Optional, Sequence, Union
 
-import datasets.arrow_dataset
+import datasets
 import einops
 import pandas as pd
 import torch
 import transformers
-from datasets import load_dataset
 from torch.utils.data import Dataset
 
 from . import common, constants, logging, torch_ops, utils
@@ -26,8 +25,10 @@ def _get_generator(seed: int) -> torch.Generator:
 
 
 def _split_train_into_train_and_eval(train_dataset: Dataset, eval_size: int, seed: int) -> tuple[Dataset, Dataset]:
-    assert eval_size < len(train_dataset), "Requested eval_size cannot be equal/larger than original train data size."
-    new_train_size = len(train_dataset) - eval_size
+    assert eval_size < len(
+        train_dataset
+    ), "Requested eval_size cannot be equal/larger than original train data size."  # noqa
+    new_train_size = len(train_dataset) - eval_size  # noqa
     train_dataset, eval_dataset = torch.utils.data.random_split(
         train_dataset, [new_train_size, eval_size], generator=_get_generator(seed)
     )
@@ -167,7 +168,7 @@ def preprocess_for_reward_modeling(
     choice = torch.tensor([[_get_numeric_preference(dict_data)] for dict_data in list_dict_data])
 
     def _get_text(example: dict, output_key: str):
-        source = make_prompt(example, prompt_dict=metadata.get("prompt_dict"))
+        source = format_prompt(example, prompt_dict=metadata.get("prompt_dict"))["prompt"]
         target = preprocess_output(
             example[output_key], eos_token=tokenizer.eos_token if end_sequence_with_eos else None
         )
@@ -243,7 +244,7 @@ def format_prompt(example, prompt_dict: dict) -> dict:
     Examples
     --------
     >>> format_prompt(dict(instruction="test", input=""), prompt_dict=dict(prompt_noinputs="prompt {instruction} "))
-    "prompt test"
+    {"prompt": "prompt test"}
     """
     assert "instruction" in example and "input" in example
 
@@ -317,10 +318,11 @@ def make_supervised_data_module(
     training_args,
     data_args,
 ):
-    alpaca_instructions = load_dataset(
+    prompt_dict = utils.jload(data_args.prompt_dict_path)
+
+    alpaca_instructions = datasets.load_dataset(
         "tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token="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"
     )
-    prompt_dict = utils.jload(data_args.prompt_dict_path)
     alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict))
 
     # support for multiple splits
@@ -436,10 +438,10 @@ def make_binary_reward_modeling_data_module(
     data_args,
     training_args,
 ):
-    alpaca_human_preference = load_dataset(
+    prompt_dict = utils.jload(data_args.prompt_dict_path)
+    alpaca_human_preference = datasets.load_dataset(
         "tatsu-lab/alpaca_farm", "alpaca_human_preference", use_auth_token="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"
     )
-    prompt_dict = utils.jload(data_args.prompt_dict_path)
     train_dataset = BinaryRewardModelingDataset(
         huggingface_dataset=alpaca_human_preference["preference"],
         prompt_dict=prompt_dict,

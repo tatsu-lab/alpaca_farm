@@ -1,11 +1,13 @@
 import contextlib
 import os
+import pathlib
 from dataclasses import dataclass, field
 from typing import List, Literal
 
 import transformers
 
 from alpaca_farm import common, constants, data_postprocessor, data_preprocessor, trainer_reward_modeling
+from alpaca_farm.auto_feedback import convert
 from alpaca_farm.models import reward_model
 
 
@@ -23,20 +25,24 @@ class DataArguments:
         default=500,
         metadata={"help": "Number of examples to split out from training to use for evaluation."},
     )
-    prompt_name: str = field(
-        default="v0_{tag}",
-        metadata={"help": "Name of the prompt to use."},
+    prompt_dict_path: str = field(
+        default=pathlib.Path(__file__).parent / "prompt" / "v0_inputs_noinputs.json",
+        metadata={"help": "Path to the dictionary for the prompt to format examples."},
     )
-    convert_ordinal_pref: bool = field(
+    convert_ordinal_to_preference: bool = field(
         default=False,
-        metadata={"help": "Whether to convert ordinal preferences to pairwise preferences. "
-                          "Used to convert human preference data from A/a/b/B format to pairwise."},
+        metadata={
+            "help": "Whether to convert ordinal preferences to pairwise preferences. "
+            "Used to convert human preference data from A/a/b/B format to pairwise."
+        },
     )
 
     def __post_init__(self):
-        # TODO: ordinary to pairwise construction.
         train_df_postprocessor = []
         eval_df_postprocessor = []
+
+        if self.convert_ordinal_to_preference:
+            train_df_postprocessor.append(convert.convert_ordinal_to_preference)
 
         self.train_df_postprocessor = data_postprocessor.SequentialPostProcessor(train_df_postprocessor)
         self.eval_df_postprocessor = data_postprocessor.SequentialPostProcessor(eval_df_postprocessor)
@@ -59,30 +65,30 @@ class TrainingArguments(transformers.TrainingArguments):
         default_factory=lambda: ["index_0", "index_1", "choice"],
         metadata={
             "help": "Names of the labels in the dataset. "
-                    "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
-                    "By default, the trainer throws away columns it doesn't recognize when creating the "
-                    "`train_dataloader` (see `_remove_unused_columns`). "
+            "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
+            "By default, the trainer throws away columns it doesn't recognize when creating the "
+            "`train_dataloader` (see `_remove_unused_columns`). "
         },
     )
     padding: Literal["max_length", "longest"] = field(
         default="longest",
         metadata={
             "help": "Padding strategy. If 'max_length', pads to `model_max_length` always; this might lead to some "
-                    "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
+            "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
         },
     )
     initialize_model_on_cpu: bool = field(
         default=False,
         metadata={
             "help": "Whether to initialize the model on CPU. "
-                    "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
+            "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
         },
     )
     end_sequence_with_eos: bool = field(
         default=False,
         metadata={
             "help": "Whether to end sequences with EOS. "
-                    "Ending with EOS might help the reward model realize it's time to predict."
+            "Ending with EOS might help the reward model realize it's time to predict."
         },
     )
 
