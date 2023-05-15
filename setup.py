@@ -31,6 +31,7 @@ setuptools.setup(
         "sentencepiece",
         "pre-commit>=3.2.0",
         "deepspeed",
+        "pandas",
     ],
     extras_require={
         "full": [

@@ -1,10 +1,15 @@
 # maps to ml_swissknife/utils.py
+import functools
+import io
 import json
+import os
 from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
 
 from .types import Numeric
+
+makedirs = functools.partial(os.makedirs, exist_ok=True)
 
 
 def alleq(l: Sequence, f: Optional[Callable] = lambda x, y: x == y):
@@ -24,6 +29,29 @@ def zip_(*args: Sequence):
         return []
     assert alleq(args, lambda x, y: len(x) == len(y))
     return zip(*args)
+
+
+def _make_w_io_base(f, mode: str):
+    if not isinstance(f, io.IOBase):
+        f_dirname = os.path.dirname(f)
+        if f_dirname != "":
+            makedirs(f_dirname)
+        f = open(f, mode=mode)
+    return f
+
+
+def _make_r_io_base(f, mode: str):
+    if not isinstance(f, io.IOBase):
+        f = open(f, mode=mode)
+    return f
+
+
+def jload(f, mode="r"):
+    """Load a .json file into a dictionary."""
+    f = _make_r_io_base(f, mode)
+    jdict = json.load(f)
+    f.close()
+    return jdict
 
 
 def jdumps(obj, indent=4, default=str):
