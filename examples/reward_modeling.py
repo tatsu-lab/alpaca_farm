@@ -9,77 +9,35 @@ import torch.nn.functional as F
 import transformers
 from transformers.trainer_utils import EvalPrediction
 
-from alpaca_farm import common, constants, torch_ops
+from alpaca_farm import common, constants, torch_ops, data_postprocessor
 from alpaca_farm.models import reward_model
 
 
 @dataclass
 class ModelArguments:
     model_name_or_path: str = field(
-        default=constants.SHARED_MODEL_DIR / "selfinstruct" / "sft_v6_llama_7b_regen_v7_3ep",
+        default=None,
         metadata={"help": "Name of or path to the base generative LM."},
     )
 
 
 @dataclass
 class DataArguments:
-    train_file_path: Optional[str] = field(default=None)
-    eval_file_path: Optional[str] = field(default=None)
     max_train_samples: Optional[int] = field(
         default=None, metadata={"help": "Maximum number of training samples to use. By default uses the whole dataset."}
     )
-    train_sql: Optional[str] = field(
-        default=None,
-        metadata={"help": "SQL query to select training data."},
-    )
-    eval_sql: Optional[str] = field(
-        default=None,
-        metadata={"help": "SQL query to select validation data."},
-    )
-    prompt_name: Optional[str] = field(
-        default=None,
-        metadata={"help": "Name of the prompt to use. If using SQL for data loading, prompt_name must be provided."},
-    )
-    eval_size: int = field(
-        default=500,
-        metadata={
-            "help": "When no eval data is specified (`eval_file_path` and `eval_sql` are both None), "
-            "controls the number of samples from the original training set split out to use for evaluation."
-        },
-    )
-    dedup_instruction: bool = field(
-        default=True,
-        metadata={"help": "If true, deduplicates training data by input and instruction. "},
-    )
-    database_key: str = field(
-        default="instruction_following",
-        metadata={"help": "Name of the database for SQL queries."},
-    )
-    randomize_label_frac: float = field(
-        default=0.0,
-        metadata={"help": "Fraction of train+eval data for which to randomize label."},
-    )
-    randomize_label_seed: int = field(
-        default=42,
-        metadata={"help": "Seed for randomizing labels."},
+    prompt_name: str = field(
+        default="v0_{tag}",
+        metadata={"help": "Name of the prompt to use."},
     )
 
     def __post_init__(self):
-        if sum(opt is not None for opt in [self.train_file_path, self.train_sql]) != 1:
-            raise ValueError("Exactly one of `train_file_path` or `train_sql` must be specified.")
-        if sum(opt is not None for opt in [self.eval_file_path, self.eval_sql]) > 1:
-            raise ValueError("At most one of `eval_file_path` or `eval_sql` must be specified.")
-        if any([self.train_sql, self.eval_sql]) and self.prompt_name is None:
-            raise ValueError("If using SQL for data loading, prompt_name must be provided.")
-
         # TODO: ordinary to pairwise construction.
         train_df_postprocessor = []
         eval_df_postprocessor = []
-        if self.dedup_instruction:
-            train_df_postprocessor.append(DedupInstructionDFPostProcessor())
 
-        self.train_df_postprocessor = SequentialPostProcessor(train_df_postprocessor)
-        self.eval_df_postprocessor = SequentialPostProcessor(eval_df_postprocessor)
+        self.train_df_postprocessor = data_postprocessor.SequentialPostProcessor(train_df_postprocessor)
+        self.eval_df_postprocessor = data_postprocessor.SequentialPostProcessor(eval_df_postprocessor)
 
 
 @dataclass
@@ -99,30 +57,30 @@ class TrainingArguments(transformers.TrainingArguments):
         default_factory=lambda: ["index_0", "index_1", "choice"],
         metadata={
             "help": "Names of the labels in the dataset. "
-            "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
-            "By default, the trainer throws away columns it doesn't recognize when creating the "
-            "`train_dataloader` (see `_remove_unused_columns`). "
+                    "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
+                    "By default, the trainer throws away columns it doesn't recognize when creating the "
+                    "`train_dataloader` (see `_remove_unused_columns`). "
         },
     )
     padding: Literal["max_length", "longest"] = field(
         default="longest",
         metadata={
             "help": "Padding strategy. If 'max_length', pads to `model_max_length` always; this might lead to some "
-            "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
+                    "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
         },
     )
     initialize_model_on_cpu: bool = field(
         default=False,
         metadata={
             "help": "Whether to initialize the model on CPU. "
-            "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
+                    "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
         },
     )
     end_sequence_with_eos: bool = field(
         default=False,
         metadata={
             "help": "Whether to end sequences with EOS. "
-            "Ending with EOS might help the reward model realize it's time to predict."
+                    "Ending with EOS might help the reward model realize it's time to predict."
         },
     )
 
