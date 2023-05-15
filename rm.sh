@@ -1,0 +1,31 @@
+RUNNAME="test_rm"
+torchrun --nproc_per_node=8 --master_port=1234 examples/reward_modeling.py \
+  --fp16 False \
+  --bf16 True \
+  --seed 42 \
+  --model_name_or_path "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_v6_llama_7b_regen_v7_3ep" \
+  --output_dir "/juice5/scr5/nlp/crfm/human-feedback/models/tests/rm" \
+  --model_max_length 512 \
+  --num_train_epochs 1 \
+  --per_device_train_batch_size 1 \
+  --per_device_eval_batch_size 4 \
+  --gradient_accumulation_steps 2 \
+  --eval_steps 10 \
+  --save_strategy "steps" \
+  --save_steps 1000000000 \
+  --save_total_limit 1 \
+  --learning_rate 3e-6 \
+  --weight_decay 0.0 \
+  --warmup_ratio 0.03 \
+  --lr_scheduler_type "cosine" \
+  --evaluation_strategy "steps" \
+  --logging_steps 10 \
+  --wandb_project "alpaca_farm" \
+  --run_name $RUNNAME \
+  --fsdp "full_shard auto_wrap" \
+  --fsdp_transformer_layer_cls_to_wrap "LlamaDecoderLayer" \
+  --tf32 True \
+  --flash_attn True \
+  --ddp_timeout 1800 \
+  --end_sequence_with_eos False \
+  --convert_ordinal_to_preference True

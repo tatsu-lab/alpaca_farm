@@ -26,6 +26,12 @@ import pandas as pd
 import scipy
 
 
+def patch_logprob_columns(df: pd.DataFrame, num_categories: int) -> pd.DataFrame:
+    for i in range(num_categories):
+        df[f"preference_{i}_logprob"] = np.nan
+    return df
+
+
 # TODO in terms of naming in the DB, maybe this should be "ordinal_preference" instead of "preference"
 #  and the table should be called "ordinal_preference" instead of "ordered_preference"
 def convert_ordinal_to_preference(df_ordinal: pd.DataFrame) -> pd.DataFrame:
