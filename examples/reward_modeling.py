@@ -47,6 +47,7 @@ class DataArguments:
         eval_df_postprocessor = []
 
         if self.convert_ordinal_to_preference:
+            train_df_postprocessor.append(convert.patch_logprob_columns)
             train_df_postprocessor.append(convert.convert_ordinal_to_preference)
 
         self.train_df_postprocessor = data_postprocessor.SequentialPostProcessor(train_df_postprocessor)

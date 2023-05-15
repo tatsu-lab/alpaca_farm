@@ -7,6 +7,7 @@ from typing import Callable, Dict, Optional, Sequence, Union
 
 import datasets
 import einops
+import numpy as np
 import pandas as pd
 import torch
 import transformers
