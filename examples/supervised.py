@@ -1,12 +1,10 @@
 import contextlib
 import logging
 import os
-import time
+import pathlib
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Tuple
+from typing import Literal, Tuple
 
-import numpy as np
-import torch
 import transformers
 from transformers import Trainer
 
@@ -27,7 +25,8 @@ class DataArguments:
         metadata={"help": "Splits to use for training."},
     )
     prompt_dict_path: str = field(
-        default=None, metadata={"help": "Path to the dictionary for the prompt to format examples."}
+        default=pathlib.Path(__file__).parent / "prompt" / "v0_inputs_noinputs.json",
+        metadata={"help": "Path to the dictionary for the prompt to format examples."},
     )
 
 
