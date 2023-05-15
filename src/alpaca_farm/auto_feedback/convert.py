@@ -18,6 +18,7 @@ is the number of outputs.
 is the number of outputs.
 """
 import copy
+import dataclasses
 import logging
 import math
 
@@ -26,10 +27,14 @@ import pandas as pd
 import scipy
 
 
-def patch_logprob_columns(df: pd.DataFrame, num_categories: int) -> pd.DataFrame:
-    for i in range(num_categories):
-        df[f"preference_{i}_logprob"] = np.nan
-    return df
+@dataclasses.dataclass
+class LogprobsColumnPatch(object):
+    num_categories: int = 2
+
+    def __call__(self, df: pd.DataFrame) -> pd.DataFrame:
+        for i in range(self.num_categories):
+            df[f"preference_{i}_logprob"] = np.nan
+        return df
 
 
 # TODO in terms of naming in the DB, maybe this should be "ordinal_preference" instead of "preference"
