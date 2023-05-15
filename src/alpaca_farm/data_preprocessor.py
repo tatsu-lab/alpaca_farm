@@ -3,17 +3,17 @@
 # maps to data_utils.py and data_preprocess.py
 import copy
 import dataclasses
-from typing import Dict, Sequence, Union
+from typing import Callable, Dict, Optional, Sequence, Union
 
+import einops
+import pandas as pd
 import torch
 import transformers
 from datasets import load_dataset
 from torch.utils.data import Dataset
 
-from src.alpaca_farm import logging, utils
-from src.alpaca_farm.types import Tensor
-
-from . import constants
+from . import constants, logging, torch_ops, utils
+from .types import Tensor
 
 logger = logging.get_logger(__name__)
 
@@ -242,4 +242,125 @@ def make_supervised_data_module(
     )
 
     data_collator = DataCollatorForSFTDataset(tokenizer=tokenizer)
+    return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)
+
+
+class BinaryRewardModelingDataset(Dataset):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        prompt_name: Optional[str] = None,
+        tokenizer: Optional[transformers.PreTrainedTokenizer] = None,
+        df_postprocessor: Optional[Callable] = None,
+        end_sequence_with_eos: bool = False,
+    ):
+        super(BinaryRewardModelingDataset, self).__init__()
+        data_dict = preprocess_for_reward_modeling_with_sql(
+            prompt_name=prompt_name,
+            tokenizer=tokenizer,
+            export_to_cache=False,
+            df_postprocessor=df_postprocessor,
+            end_sequence_with_eos=end_sequence_with_eos,
+        )
+        self.input_ids = data_dict["input_ids"]
+        self.labels = data_dict["labels"]
+        self.index_0 = data_dict["index_0"]
+        self.index_1 = data_dict["index_1"]
+        self.choice = data_dict["choice"]
+        self.metadata = data_dict["metadata"]
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, i) -> Dict[str, Tensor]:
+        return dict(
+            input_ids=self.input_ids[i],
+            labels=self.labels[i],
+            index_0=self.index_0[i],
+            index_1=self.index_1[i],
+            choice=self.choice[i],
+        )
+
+
+@dataclasses.dataclass
+class DataCollatorForBinaryRewardModelingDataset(object):
+    """
+    This collation assumes data preprocessing converts text into *padded* tensors of the same length.
+    For autoregressive models like OPT and GPT2, `input_ids` alone is sufficient to produce the rewards.
+    For enc-dec models like T5, we need `labels`.
+
+    `input_ids` and `labels` are tensors of size (bsz, num_candidates, max_seq_len), i.e., each batch instance has
+    `num_candidates` generations/completions.
+    `index_0` and `index_1` are tensors of size (bsz, num_pairs), and are used to index into `input_ids` and
+    `labels` to find the first and second sequences in the pair.
+    `choice` is a binary int/long tensor of size (bsz, num_pairs) indicating which sequence in the pair is better,
+    i.e., 0 means the first sequence is preferred, and 1 means otherwise.
+    """
+
+    tokenizer: transformers.PreTrainedTokenizer
+
+    def _left_pad_helper(self, instances: Sequence[dict], key: str):
+        # TODO(lxuechen): Potentially replace with `transformers.PretrainedTokenizerBase.prepare_for_model`.
+        # `instances` is a list of dicts, each dict has key whose value is a list of tensors, possibly of unequal length.
+        input_ids = [seq for instance in instances for seq in instance[key]]  # Flatten.
+        input_ids = torch_ops.pad_sequence_from_left(
+            input_ids,
+            batch_first=True,
+            padding_value=self.tokenizer.pad_token_id,
+        )
+        input_ids = einops.rearrange(
+            input_ids,
+            "(bsz num_candidates) max_seq_len -> bsz num_candidates max_seq_len",
+            num_candidates=len(instances[0][key]),
+        )
+        return input_ids
+
+    def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
+        index_0, index_1, choice = tuple(
+            torch.stack([instance[key] for instance in instances]) for key in ("index_0", "index_1", "choice")
+        )
+        input_ids = self._left_pad_helper(instances, "input_ids")
+        attention_mask = input_ids.ne(self.tokenizer.pad_token_id).long()
+        return dict(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            index_0=index_0,
+            index_1=index_1,
+            choice=choice,
+        )
+
+
+def _get_generator(seed: int) -> torch.Generator:
+    rng = torch.Generator()
+    rng.manual_seed(seed)
+    return rng
+
+
+def _split_train_into_train_and_eval(train_dataset: Dataset, eval_size: int, seed: int) -> tuple[Dataset, Dataset]:
+    assert eval_size < len(train_dataset), "Requested eval_size cannot be equal/larger than original train data size."
+    new_train_size = len(train_dataset) - eval_size
+    train_dataset, eval_dataset = torch.utils.data.random_split(
+        train_dataset, [new_train_size, eval_size], generator=_get_generator(seed)
+    )
+    return train_dataset, eval_dataset
+
+
+def make_binary_reward_modeling_data_module(
+    tokenizer: transformers.PreTrainedTokenizer,
+    data_args,
+    training_args,
+):
+    # TODO: get the df here.
+    train_dataset = BinaryRewardModelingDataset(
+        prompt_name=data_args.prompt_name,
+        tokenizer=tokenizer,
+        df_postprocessor=data_args.train_df_postprocessor,
+        end_sequence_with_eos=training_args.end_sequence_with_eos,
+    )
+    train_dataset, eval_dataset = _split_train_into_train_and_eval(
+        train_dataset=train_dataset,
+        eval_size=data_args.eval_size,
+        seed=training_args.seed,
+    )
+    data_collator = DataCollatorForBinaryRewardModelingDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)

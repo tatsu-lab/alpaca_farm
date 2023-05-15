@@ -1,11 +1,11 @@
 import contextlib
 import os
 from dataclasses import dataclass, field
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 import transformers
 
-from alpaca_farm import common, constants, data_postprocessor, trainer_reward_modeling
+from alpaca_farm import common, constants, data_postprocessor, data_preprocessor, trainer_reward_modeling
 from alpaca_farm.models import reward_model
 
 
@@ -19,12 +19,18 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
-    max_train_samples: Optional[int] = field(
-        default=None, metadata={"help": "Maximum number of training samples to use. By default uses the whole dataset."}
+    eval_size: int = field(
+        default=500,
+        metadata={"help": "Number of examples to split out from training to use for evaluation."},
     )
     prompt_name: str = field(
         default="v0_{tag}",
         metadata={"help": "Name of the prompt to use."},
+    )
+    convert_ordinal_pref: bool = field(
+        default=False,
+        metadata={"help": "Whether to convert ordinal preferences to pairwise preferences. "
+                          "Used to convert human preference data from A/a/b/B format to pairwise."},
     )
 
     def __post_init__(self):
@@ -119,8 +125,7 @@ def main():
         use_fast=False,  # Fast GPT2 tokenizer can break when we start counting the truncations.
     )
     tokenizer.padding = training_args.padding
-    # TODO: fix data loading.
-    data_module = data_utils.make_binary_reward_modeling_data_module(
+    data_module = data_preprocessor.make_binary_reward_modeling_data_module(
         tokenizer=tokenizer,
         data_args=data_args,
         training_args=training_args,
