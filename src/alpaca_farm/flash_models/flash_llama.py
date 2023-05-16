@@ -8,8 +8,8 @@ from torch import nn
 from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.models.llama import modeling_llama
 
-from .. import common, utils
-from . import apex_patch
+from .. import utils
+from . import apex_patch, tensor_ops
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +192,7 @@ class LlamaModel(modeling_llama.LlamaModel):
                 is_selected = attention_mask == 1
                 position_ids = torch.cat([t[i] for t, i in utils.zip_(position_ids, is_selected)])
             rotary_tensors = self._make_rotary_tensors(position_ids)
-            hidden_states, pad_back, cu_seqlens_q, max_seqlen_q = common.unpad_input(hidden_states, attention_mask)
+            hidden_states, pad_back, cu_seqlens_q, max_seqlen_q = tensor_ops.unpad_input(hidden_states, attention_mask)
             attention_mask_k = None
         else:
             if position_ids is None:

@@ -8,8 +8,7 @@ from torch import nn
 from transformers.models.opt import modeling_opt
 from transformers.utils import logging
 
-from .. import common
-from . import apex_patch
+from . import apex_patch, tensor_ops
 
 logger = logging.get_logger(__name__)
 
@@ -173,7 +172,7 @@ class OPTDecoder(modeling_opt.OPTDecoder):
 
         if past_key_values_length == 0:
             # Unpad hidden states: (bsz, seqlen, hidden_size) -> (total_nnz, hidden_size)
-            hidden_states, pad_back, cu_seqlens_q, max_seqlen_q = common.unpad_input(hidden_states, attention_mask)
+            hidden_states, pad_back, cu_seqlens_q, max_seqlen_q = tensor_ops.unpad_input(hidden_states, attention_mask)
             attention_mask_k = None
         else:
             hidden_states, pad_back, cu_seqlens_q, max_seqlen_q = hidden_states, lambda x: x, None, None

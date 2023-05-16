@@ -1,4 +1,4 @@
-from src.alpaca_farm import logging
+from .. import logging
 
 logger = logging.get_logger(__name__)
 

@@ -22,18 +22,6 @@ from .types import AnyPath, AnyPathOrNone
 
 logger = logging.get_logger(__name__)
 
-# TODO(lxuechen): Put everything flasn-attn bit in own folder.
-try:
-    from flash_attn import bert_padding
-except ImportError as e:
-    logger.warning(f"Failed to import flash attention with error {e}")
-
-# Separate this out, since llama model is not stable.
-try:
-    from .flash_models import flash_llama
-except ImportError as e:
-    logger.warning(f"Failed to import flash attention llama with error {e}")
-
 
 def apex_is_installed():
     try:
@@ -99,6 +87,9 @@ def make_generative_lm(
         flash_attn = False
 
     if flash_attn:
+        # If flash-attn is not installed, things will break here.
+        from .flash_models import flash_llama
+
         model_cls = flash_llama.LlamaForCausalLM
     else:
         model_cls = transformers.LlamaForCausalLM
@@ -138,36 +129,6 @@ def let_model_save_mem_when_zero_grad(model: nn.Module):
     # Need this runtime method patching, since self is used within zero_grad.
     model.zero_grad = types.MethodType(new_zero_grad, model)
     return model
-
-
-def pad_to_multiples_of_x(tensor: Tensor, x: int = 8):
-    """Pad a tensor along the batch dimension to a multiple of x."""
-    total_nnz, hidden_size = tensor.size()
-    pad_len = (x - total_nnz % x) % x
-    if pad_len != 0:
-        tensor = torch.cat(
-            [
-                tensor,
-                torch.zeros([pad_len, hidden_size], device=tensor.device, dtype=tensor.dtype),
-            ],
-            dim=0,
-        )
-
-    def unpad_x(padded_tensor):
-        return padded_tensor[:-pad_len] if pad_len > 0 else padded_tensor
-
-    return tensor, unpad_x
-
-
-def unpad_input(padded: torch.Tensor, attention_mask: torch.Tensor) -> tuple[torch.Tensor, Callable, torch.Tensor, int]:
-    """Wrapper for unpad_input in official flash-attn."""
-    batch_size, padded_seqlen = padded.shape[:2]
-    unpadded, indices, cu_seqlens, max_seqlen = bert_padding.unpad_input(padded, attention_mask)
-
-    def pad_back(unpadded: torch.Tensor):
-        return bert_padding.pad_input(unpadded, indices, batch_size, padded_seqlen)
-
-    return unpadded, pad_back, cu_seqlens, max_seqlen
 
 
 def safe_save_model_for_hf_trainer(
