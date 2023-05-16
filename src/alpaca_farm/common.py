@@ -4,11 +4,13 @@ import time
 import types
 import warnings
 from pathlib import Path
-from typing import Callable, Dict, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 import transformers
+from accelerate.utils import convert_outputs_to_fp32, is_torch_version
 from torch import Tensor, nn
 from torch.distributed.fsdp import FullStateDictConfig
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
@@ -319,4 +321,52 @@ def get_transformer_hidden_size(model: transformers.PreTrainedModel):
             hidden_size_attr_name = "hidden_size"
         else:
             raise ValueError(f"Unknown base_model type: {type(model)}")
+        from typing import Any, Mapping
     return getattr(model.config, hidden_size_attr_name)
+
+
+# TODO(lxuechen): Refactor like HF
+def prepare_inputs(
+    data: Union[torch.Tensor, Any],
+    device: Union[str, int, torch.device],
+) -> Union[torch.Tensor, Any]:
+    if isinstance(data, Mapping):
+        return type(data)({k: prepare_inputs(v, device) for k, v in data.items()})
+    elif isinstance(data, (tuple, list)):
+        return type(data)(prepare_inputs(v, device) for v in data)
+    elif isinstance(data, torch.Tensor):
+        return data.to(device)
+    return data
+
+
+def pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0, left=True):
+    current_size = inputs.size()
+    diffs = tuple(ti - ci for ti, ci in utils.zip_(target_size, current_size))
+    pad_params = []
+    for diff in diffs:
+        pad_params = ([diff, 0] if left else [0, diff]) + pad_params
+    res = F.pad(inputs, pad=pad_params, value=value)
+    return res
+
+
+def left_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
+    return pad(inputs=inputs, target_size=target_size, value=value, left=True)
+
+
+def right_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
+    return pad(inputs=inputs, target_size=target_size, value=value, left=False)
+
+
+def cast_with_native_amp(func: Callable, mixed_precision: Optional[str] = None) -> Callable:
+    """Almost like how huggingface accelerate cast `model.forward`."""
+    if mixed_precision not in ("fp16", "bf16"):
+        logger.warning(f"Unknown mixed precision mode: {mixed_precision}, falling back to fp32.")
+        return func
+
+    if mixed_precision == "fp16" and is_torch_version(">=", "1.10"):
+        output_func = torch.cuda.amp.autocast(dtype=torch.float16)(func)
+    else:
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        output_func = torch.autocast(device_type=device_type, dtype=torch.bfloat16)(func)
+    output_func = convert_outputs_to_fp32(output_func)
+    return output_func

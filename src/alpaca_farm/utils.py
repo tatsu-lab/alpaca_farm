@@ -1,14 +1,20 @@
 # maps to ml_swissknife/utils.py
+import argparse
 import functools
 import io
 import json
 import os
+import random
 from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
+import torch
 import transformers
 
+from . import logging
 from .types import Numeric
+
+logger = logging.get_logger(__name__)
 
 makedirs = functools.partial(os.makedirs, exist_ok=True)
 
@@ -101,3 +107,29 @@ def stable_resize_token_embeddings(model: transformers.PreTrainedModel, target_s
 
         input_embeddings[-num_new_tokens:] = input_embeddings_avg
         output_embeddings[-num_new_tokens:] = output_embeddings_avg
+
+
+def convert_str_dtype_to_torch_dtype(str_dtype: Optional[str]):
+    if str_dtype in ("single", "float32", "float", "fp32", None):
+        return torch.float
+    elif str_dtype in ("half", "float16", "fp16"):
+        return torch.float16
+    elif str_dtype in ("bfloat16", "bf16"):
+        return torch.bfloat16
+    elif str_dtype in ("double", "float64"):
+        return torch.float64
+    else:
+        raise ValueError(f"Unknown dtype: {str_dtype}")
+
+
+def manual_seed(args_or_seed: Union[int, argparse.Namespace], fix_cudnn=False):
+    if hasattr(args_or_seed, "seed"):
+        args_or_seed = args_or_seed.seed
+    random.seed(args_or_seed)
+    np.random.seed(args_or_seed)
+    torch.manual_seed(args_or_seed)
+    torch.cuda.manual_seed_all(args_or_seed)
+    os.environ["PYTHONHASHSEED"] = str(args_or_seed)
+    if fix_cudnn:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False

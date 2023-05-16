@@ -120,7 +120,6 @@ def decode_prompts_with_huggingface_given_model(
     pad_to_length=2048,  # Force pad to this length for distributed communication to work.
     tf32=True,
     force_multisample_format: bool = False,
-    is_watermark: bool = False,
     cleanup_funcs: Optional[Sequence[Callable]] = (NullCharCleanUp(),),
     divide_work: bool = True,
     internal_batch_return_sequences: Optional[int] = None,
