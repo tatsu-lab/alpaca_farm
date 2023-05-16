@@ -10,7 +10,8 @@ from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.models.llama import modeling_llama
 
 from src.alpaca_farm import common
-from . import ext
+
+from . import apex_patch
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ class LlamaDecoderLayer(modeling_llama.LlamaDecoderLayer):
         )
         hidden_states = residual + hidden_states
         residual = hidden_states
-        hidden_states = ext.apex_rmsnorm(self.post_attention_layernorm, hidden_states)
+        hidden_states = apex_patch.apex_rmsnorm(self.post_attention_layernorm, hidden_states)
         hidden_states = self.mlp(hidden_states)
         hidden_states = residual + hidden_states
         outputs = (hidden_states,)
@@ -231,7 +232,7 @@ class LlamaModel(modeling_llama.LlamaModel):
             if use_cache:
                 next_decoder_cache += (layer_outputs[1],)
 
-        hidden_states = ext.apex_rmsnorm(self.norm, hidden_states)
+        hidden_states = apex_patch.apex_rmsnorm(self.norm, hidden_states)
         hidden_states = pad_back(hidden_states)
 
         if output_hidden_states:
