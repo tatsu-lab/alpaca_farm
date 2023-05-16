@@ -20,6 +20,7 @@ from .types import AnyPath, AnyPathOrNone
 
 logger = logging.get_logger(__name__)
 
+# TODO(lxuechen): Put everything flasn-attn bit in own folder.
 try:
     from flash_attn import bert_padding
 except ImportError as e:

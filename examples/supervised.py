@@ -111,11 +111,7 @@ def sft():
         special_tokens_dict["bos_token"] = constants.DEFAULT_BOS_TOKEN
     if tokenizer.unk_token is None:
         special_tokens_dict["unk_token"] = constants.DEFAULT_UNK_TOKEN
-    utils.smart_tokenizer_and_embedding_resize(
-        special_tokens_dict=special_tokens_dict,
-        tokenizer=tokenizer,
-        model=model,
-    )
+    utils.stable_resize_token_embeddings_and_tokenizer(model, tokenizer, special_tokens_dict)
 
     data_module: dict = data_preprocessor.make_supervised_data_module(
         tokenizer=tokenizer,

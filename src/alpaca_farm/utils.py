@@ -6,6 +6,7 @@ import os
 from typing import Callable, Optional, Sequence, Union
 
 import numpy as np
+import transformers
 
 from .types import Numeric
 
@@ -71,19 +72,26 @@ def mean(*seqs: Sequence[Numeric]) -> Union[Numeric, Sequence[Numeric]]:
     return means[0] if singleton else means
 
 
-def smart_tokenizer_and_embedding_resize(
-    special_tokens_dict,
-    tokenizer,
-    model,
+def stable_resize_token_embeddings_and_tokenizer(
+    model: transformers.PreTrainedModel,
+    tokenizer: transformers.PreTrainedTokenizer,
+    special_tokens_dict: dict,
 ):
-    """Resize tokenizer and embedding in a smart way.
+    """Resize tokenizer and embedding together.
 
-    Notes:
-        For new tokens, the embedding value is the average of all old embedding vectors.
+    For new tokens, the embedding value is the average of all old embedding vectors.
     """
-    num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
-    model.resize_token_embeddings(len(tokenizer))
+    tokenizer.add_special_tokens(special_tokens_dict)
+    stable_resize_token_embeddings(model, len(tokenizer))
 
+
+def stable_resize_token_embeddings(model: transformers.PreTrainedModel, target_size: int):
+    num_new_tokens = target_size - model.get_input_embeddings().weight.size(0)
+    model.resize_token_embeddings(target_size)
+
+    # New token embedding takes the average of existing ones.
+    # We need this check since `num_new_tokens` can be negative if token embeddings were padded initially.
+    # This can happen when there's multiple-of-64 padding.
     if num_new_tokens > 0:
         input_embeddings = model.get_input_embeddings().weight.data
         output_embeddings = model.get_output_embeddings().weight.data

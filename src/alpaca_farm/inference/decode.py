@@ -31,17 +31,19 @@ def load_model_and_tokenizer_for_inference(
     model_cls=transformers.AutoModelForCausalLM,
     model_kwargs: Optional[dict] = None,
     tokenizer_kwargs: Optional[dict] = None,
+    resize_token_embeddings_if_mismatch=True,
 ) -> Tuple[transformers.PreTrainedModel, transformers.PreTrainedTokenizer]:
     """Load huggingface model and tokenizer from path or with name for inference.
 
     This function should only be used for decoding or reward scoring.
 
     Notes:
-        - This function is only guaranteed to work when loading admissible model families, i.e., opt and llama.
-        - This function internally shrinks the model embedding size to avoid generating out of vocab tokens.
-            Models like OPT are by default created with embedding size that's divisible by 64, even though the vocab
-            size is not. This is to help with training speed, but can be problematic when generating.
+        - This function is only guaranteed to work correctly when loading admissible model families, i.e., opt and llama.
         - Loaded models are always in eval mode.
+        - By default, this function internally shrinks the model embedding size to avoid generating out of vocab tokens.
+            Models like OPT are by default created with embedding size that's divisible by 64, even though the vocab
+            size is not. This is to help with training speed, but can be problematic when generating, i.e., there is
+            a low probability of generating out of vocab ids (especially for untrained models).
         - By default, loaded models are on the device specified by LOCAL_RANK or cpu.
             - This behavior can be overridden by passing device_map to model_kwargs.
         - By default, loaded tokenizers are fast tokenizers in left padding mode.
@@ -74,14 +76,14 @@ def load_model_and_tokenizer_for_inference(
     if isinstance(model, (transformers.OPTForCausalLM, transformers.LlamaForCausalLM)):
         input_embedding_size = model.get_input_embeddings().weight.size(0)
         num_tokens = len(tokenizer)
-        if input_embedding_size != num_tokens:
+        if input_embedding_size != num_tokens and resize_token_embeddings_if_mismatch:
             logger.warning(
-                "Model embedding size is not equal to vocab size. Shrinking embedding size. "
+                f"Model embedding size {input_embedding_size} is not equal to vocab size {num_tokens}. "
+                f"Shrinking/growing embedding size. "
                 "This is okay if your previous embeddings were inflated to a multiple of 64 for faster computation. "
                 "But generally, be cautious! This may cause unexpected behavior!!!"
             )
-            common.stable_resize_token_embeddings(model, num_tokens)  # Shrink embedding size.
-    logger.warning(f"Loaded model has {len(list(model.parameters()))} parameters.")
+            utils.stable_resize_token_embeddings(model, num_tokens)
     return model, tokenizer
 
 
@@ -164,15 +166,6 @@ def decode_prompts_with_huggingface_given_model(
         per_worker_size = new_data_size // world_size
         new_prompts = new_prompts[local_rank * per_worker_size : (local_rank + 1) * per_worker_size]
     # TODO(lxuechen): Refactor to tokenize upfront. This way we can pad with tokenizer, and not worry ourselves.
-
-    if is_watermark:
-        watermark_processor = WatermarkLogitsProcessor(
-            vocab=list(tokenizer.get_vocab().values()),
-            gamma=0.25,
-            delta=2.0,
-            seeding_scheme="simple_1",
-        )
-        generate_kwargs["logits_processor"] = transformers.LogitsProcessorList([watermark_processor])
 
     completions = []
     for batch_idx, start_idx in tqdm.tqdm(
@@ -299,7 +292,6 @@ def decode_prompts_with_huggingface(
     pad_to_length=2048,  # Force pad to this length for distributed communication to work.
     tf32=True,
     force_multisample_format: bool = False,
-    is_watermark: bool = False,
     seed: Optional[int] = None,
     communication_num_chunks: int = 1,
     **decoding_kwargs,
@@ -318,7 +310,6 @@ def decode_prompts_with_huggingface(
         pad_to_length: The token length to pad the prompts. This is necessary for and only used in distributed decoding.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
         force_multisample_format: Whether to force the outputs to be in the multisample format.
-        is_watermark: Whether to use the watermarking method.
         seed: The random seed. If None, this function is generally not deterministic, unless the seed is fixed outside.
         communication_num_chunks: Number of chunks to create for final communication.
             Increase this to reduce the size of the chunk per communication.
@@ -345,7 +336,6 @@ def decode_prompts_with_huggingface(
         pad_to_length=pad_to_length,
         tf32=tf32,
         force_multisample_format=force_multisample_format,
-        is_watermark=is_watermark,
         seed=seed,
         communication_num_chunks=communication_num_chunks,
         **decoding_kwargs,
