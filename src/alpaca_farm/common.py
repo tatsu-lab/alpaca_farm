@@ -6,7 +6,7 @@ import time
 import types
 import warnings
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 
 import torch
 import torch.distributed as dist
@@ -15,7 +15,7 @@ import transformers
 from accelerate import Accelerator
 from accelerate.utils import convert_outputs_to_fp32, is_torch_version
 from ml_swissknife import utils
-from torch import nn
+from torch import Tensor, nn
 from torch.distributed.fsdp import FullStateDictConfig
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import StateDictType
@@ -23,8 +23,6 @@ from transformers.trainer import WEIGHTS_NAME, is_deepspeed_zero3_enabled
 
 from . import constants, logging
 from .types import AnyPath, AnyPathOrNone
-from torch import Tensor
-from typing import Callable, Dict, Optional, Sequence, Union
 
 logger = logging.get_logger(__name__)
 
@@ -35,7 +33,7 @@ except ImportError as e:
 
 # Separate this out, since llama model is not stable.
 try:
-    from models import hf_flash_llama
+    from .flash_models import flash_llama
 except ImportError as e:
     logger.warning(f"Failed to import flash attention llama with error {e}")
 
@@ -104,7 +102,7 @@ def make_generative_lm(
         flash_attn = False
 
     if flash_attn:
-        model_cls = hf_flash_llama.LlamaForCausalLM
+        model_cls = flash_llama.LlamaForCausalLM
     else:
         model_cls = transformers.LlamaForCausalLM
 

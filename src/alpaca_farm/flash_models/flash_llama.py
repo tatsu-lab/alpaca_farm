@@ -9,8 +9,7 @@ from torch import nn
 from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.models.llama import modeling_llama
 
-from src.alpaca_farm import common
-
+from .. import common
 from . import apex_patch
 
 logger = logging.getLogger(__name__)
