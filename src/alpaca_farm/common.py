@@ -1,27 +1,21 @@
 # maps to common.py
-import functools
 import os
-import re
 import time
 import types
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
+from typing import Callable, Dict, Optional, Sequence, Union
 
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 import transformers
-from accelerate import Accelerator
-from accelerate.utils import convert_outputs_to_fp32, is_torch_version
-from ml_swissknife import utils
 from torch import Tensor, nn
 from torch.distributed.fsdp import FullStateDictConfig
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import StateDictType
 from transformers.trainer import WEIGHTS_NAME, is_deepspeed_zero3_enabled
 
-from . import constants, logging
+from . import constants, logging, utils
 from .types import AnyPath, AnyPathOrNone
 
 logger = logging.get_logger(__name__)

@@ -4,12 +4,11 @@ from typing import Callable, List, Optional, Tuple, Union
 import einops
 import torch
 from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func
-from ml_swissknife import utils
 from torch import nn
 from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.models.llama import modeling_llama
 
-from .. import common
+from .. import common, utils
 from . import apex_patch
 
 logger = logging.getLogger(__name__)

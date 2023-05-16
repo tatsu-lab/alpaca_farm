@@ -9,9 +9,8 @@ import torch
 import torch.distributed as dist
 import tqdm
 import transformers
-from ml_swissknife import distributed_utils, utils
 
-from .. import common, constants, logging
+from .. import common, constants, distributed_utils, logging, utils
 from ..types import Tensor
 
 logger = logging.get_logger(__name__)
