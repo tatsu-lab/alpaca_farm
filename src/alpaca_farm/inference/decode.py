@@ -6,12 +6,10 @@ from typing import Callable, List, Optional, Sequence, Tuple, Union
 
 import einops
 import torch
-import torch.distributed as dist
 import tqdm
 import transformers
 
 from .. import common, constants, distributed_utils, logging, utils
-from ..types import Tensor
 
 logger = logging.get_logger(__name__)
 
@@ -98,14 +96,6 @@ class HFDecodingArguments:
     num_beams: int = 1
     max_new_tokens: int = 100  # This is aligned with `openai_utils.OpenAIDecodingArguments`.
     num_return_sequences: int = 1
-
-
-def _all_gather_and_cat(tensor: Tensor, dim=0):
-    if distributed_utils.get_world_size() > 1:
-        tensor_list = [torch.empty_like(tensor) for _ in range(distributed_utils.get_world_size())]
-        dist.all_gather(tensor_list, tensor)
-        tensor = torch.cat(tensor_list, dim=dim)
-    return tensor
 
 
 @torch.inference_mode()
@@ -246,7 +236,9 @@ def decode_prompts_with_huggingface_given_model(
         logger.info(f"RANK {local_rank} starting all_gather with {communication_num_chunks} communication_num_chunks")
         mine = einops.rearrange(completions, "(n d) l -> n d l", d=generate_kwargs["num_return_sequences"])
         chunks = torch.chunk(mine, chunks=communication_num_chunks, dim=1)
-        all_chunk_list = [_all_gather_and_cat(chunk.contiguous().to(device), dim=0).cpu() for chunk in chunks]
+        all_chunk_list = [
+            distributed_utils.all_gather_and_cat(chunk.contiguous().to(device), dim=0).cpu() for chunk in chunks
+        ]
         completions = torch.cat(all_chunk_list, dim=1)
         completions = einops.rearrange(completions, "n d l -> (n d) l")
 
