@@ -510,6 +510,16 @@ class SinglePairwiseAutoAnnotator:
     def postprocess(self, df_annotated: pd.DataFrame) -> pd.DataFrame:
         """Postprocess the annotated examples."""
 
+        arr_is_na = df_annotated["preference"].isna()
+        if arr_is_na.any():
+            logging.warning(
+                f"{arr_is_na.sum().item()} samples had no auto annotation. We are filtering them for now. "
+                f"If you are using chain of thought it might be that max_tokens limit is too low. "
+            )
+            df_annotated = df_annotated[~arr_is_na]
+
+        assert set(df_annotated["preference"].unique().tolist()) <= {1, 2}
+
         if self.is_randomize_output_order:
             # unshuffles output 1 and output 2. For binary preference, unshuffling is equivalent to reshuffling
             df_annotated = ann_utils.shuffle_pairwise_preferences(df_annotated, df_annotated["is_switched_outputs"])
