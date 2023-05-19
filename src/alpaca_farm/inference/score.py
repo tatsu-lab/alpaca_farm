@@ -28,6 +28,7 @@ def score_sequences_with_huggingface_given_model(
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = tf32  # noqa
 
     local_rank, world_size = distributed_utils.setup()
+    local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
 
     model.forward = common.cast_with_native_amp(model.forward, mixed_precision=mixed_precision)

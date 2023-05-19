@@ -263,7 +263,7 @@ def format_prompt_with_huggingface_dataset(
     prompt_dict: dict,
     df_postprocessor: Optional[Callable] = None,
     return_dict=True,
-) -> dict:
+):
     df = pd.DataFrame(huggingface_dataset)
     if df_postprocessor is not None:
         df = df_postprocessor(df)

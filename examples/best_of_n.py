@@ -8,7 +8,7 @@ from alpaca_farm import data_preprocessor, utils
 from alpaca_farm.inference import decode
 
 
-def main(
+def run_decode(
     model_name_or_path,
     prompt_dict_path=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
     use_auth_token=None,
@@ -30,6 +30,14 @@ def main(
     )
     print(prompts[:max_instances])
     print(completions)
+
+
+def run_score():
+    pass
+
+
+def main(task, **kwargs):
+    globals()[task](**kwargs)
 
 
 if __name__ == "__main__":
