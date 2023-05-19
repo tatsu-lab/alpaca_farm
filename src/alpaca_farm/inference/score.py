@@ -1,7 +1,8 @@
 import math
 import sys
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
+import einops
 import torch
 import tqdm
 import transformers
@@ -118,3 +119,48 @@ def score_sequences_with_huggingface(
         max_instances=max_instances,
         tf32=tf32,
     )
+
+
+@torch.inference_mode()
+def rerank_sequences_with_huggingface(
+    sequences: Sequence[Sequence[str]],
+    model_name: str,
+    rerank_top_k=1,
+    per_device_batch_size=20,
+    cache_dir=constants.DEFAULT_CACHE_DIR,
+    mixed_precision: Optional[str] = None,
+    max_instances=sys.maxsize,
+    tf32=True,
+) -> Tuple[List[List[str]], List[List[int]]]:
+    """Rerank samples with a reward model.
+
+    Args:
+        sequences: A nested sequence of strings. Each inner sequence contains samples with the same prompt.
+        model_name: Name of the reward model.
+        rerank_top_k: The number of top samples to return.
+        per_device_batch_size: The batch size per device for evaluating rewards.
+        cache_dir: The directory to cache the huggingface model.
+        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
+        max_instances: The maximum number of prompts to rerank.
+        tf32: Whether to use tensorfloat32 for matrix multiplication.
+
+    Returns:
+        A tuple with two entries.
+        The first is a nested sequence of strings. Each inner sequence contains the top-k samples with the same prompt.
+        The second is a nested sequence of integers. Each inner sequence contains the indices of the top-k samples.
+    """
+    sequences = sequences[:max_instances]
+    flat_sequences = [sequence_i_j for sequence_i in sequences for sequence_i_j in sequence_i]
+    rewards = score_sequences_with_huggingface(
+        sequences=flat_sequences,
+        model_name=model_name,
+        per_device_batch_size=per_device_batch_size,
+        cache_dir=cache_dir,
+        mixed_precision=mixed_precision,
+        tf32=tf32,
+    )
+    rewards = einops.rearrange(torch.tensor(rewards), "(b m) -> b m", m=len(sequences[0]))
+    # Nested list of "size" (data_size, num_options).
+    top_indices = rewards.topk(rerank_top_k, dim=1).indices.tolist()
+    top_sequences = [[sequence[i] for i in top_index] for sequence, top_index in utils.zip_(sequences, top_indices)]
+    return top_sequences, top_indices
