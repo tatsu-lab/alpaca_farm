@@ -1,6 +1,6 @@
 import pathlib
 import sys
-from typing import Optional
+from typing import Dict, Optional, Sequence, Union
 
 import datasets
 import fire
@@ -21,6 +21,22 @@ def run_decode(
     num_return_sequences=4,
     max_new_tokens=300,
 ):
+    """Decode samples from the policy language model.
+
+    Args:
+        decoder_name_or_path: Name or path of the policy language model.
+        prompt_dict_path: Path to the prompt dictionary for formatting the instruction and input into a string.
+        output_path: Optional path to save the decoding results.
+        use_auth_token: Optional HuggingFace authentication token.
+        split: Split of the dataset to decode.
+        max_instances: Maximum number of instances to decode.
+        temperature: Temperature for decoding.
+        num_return_sequences: Number of sequences to return per each prompt.
+        max_new_tokens: Maximum number of new tokens to generate.
+
+    Returns:
+        List of dict data with keys 'prompt', 'completion', and 'decoder_name_or_path'.
+    """
     dataset = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token=use_auth_token)
 
     prompts, list_dict_data, metadata = data_preprocessor.format_prompt_with_huggingface_dataset(
@@ -48,10 +64,21 @@ def run_decode(
 
 
 def run_rerank(
-    list_dict_data_or_path,
+    list_dict_data_or_path: Union[Sequence[Dict], AnyPath],
     scorer_name_or_path: AnyPath,
     output_path: AnyPathOrNone = None,
 ):
+    """Rerank sequences with reward model.
+
+    Args:
+        list_dict_data_or_path: Sequence of dict data or a path to it.
+            Each dict should have the keys 'prompt' and 'completion' with string values that can be added together.
+        scorer_name_or_path: Name or path of the reward model.
+        output_path: Optional path to save the rerank results.
+
+    Returns:
+        Rerank results as a list of dict data.
+    """
     if isinstance(list_dict_data_or_path, AnyPath):
         list_dict_data_or_path = utils.jload(list_dict_data_or_path)
 
