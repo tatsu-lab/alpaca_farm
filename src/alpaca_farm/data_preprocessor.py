@@ -151,12 +151,11 @@ def preprocess_for_reward_modeling(
     end_sequence_with_eos: bool = False,
     verbose=True,
 ) -> dict[str, torch.Tensor]:
-    formatted_data = format_prompt_with_huggingface_dataset(
+    _, list_dict_data, metadata = format_prompt_with_huggingface_dataset(
         huggingface_dataset=huggingface_dataset,
         prompt_dict=prompt_dict,
         df_postprocessor=df_postprocessor,
     )
-    list_dict_data, metadata = common.unpack_dict(formatted_data, ("list_dict_data", "metadata"))
 
     index_0, index_1 = tuple(
         torch.full(size=(len(list_dict_data), 1), fill_value=fill_value, dtype=torch.long) for fill_value in (0, 1)
@@ -169,7 +168,7 @@ def preprocess_for_reward_modeling(
     choice = torch.tensor([[_get_numeric_preference(dict_data)] for dict_data in list_dict_data])
 
     def _get_text(example: dict, output_key: str):
-        source = format_prompt(example, prompt_dict=metadata.get("prompt_dict"))["prompt"]
+        source = format_prompt(example, prompt_dict=prompt_dict)
         target = preprocess_output(
             example[output_key], eos_token=tokenizer.eos_token if end_sequence_with_eos else None
         )
@@ -229,7 +228,7 @@ def preprocess_for_reward_modeling(
     return packaged_data
 
 
-def format_prompt(example, prompt_dict: dict, return_dict=True) -> dict:
+def format_prompt(example, prompt_dict: dict, return_dict=False):
     """Formats a prompt with a prompt_dict formatter.
 
     Args:
@@ -262,19 +261,19 @@ def format_prompt_with_huggingface_dataset(
     huggingface_dataset,
     prompt_dict: dict,
     df_postprocessor: Optional[Callable] = None,
-    return_dict=True,
-) -> dict:
+    return_dict=False,
+):
     df = pd.DataFrame(huggingface_dataset)
     if df_postprocessor is not None:
         df = df_postprocessor(df)
     list_dict_data = df.to_dict(orient="records")
 
-    prompts = [format_prompt(example, prompt_dict, return_dict) for example in list_dict_data]
+    prompts = [format_prompt(example, prompt_dict) for example in list_dict_data]
     metadata = {"prompt_dict": prompt_dict}
 
     if return_dict:
         return dict(prompts=prompts, list_dict_data=list_dict_data, metadata=metadata)
-    return prompts
+    return prompts, list_dict_data, metadata
 
 
 class SFTDataset(Dataset):
@@ -329,7 +328,7 @@ def make_supervised_data_module(
     alpaca_instructions = datasets.load_dataset(
         "tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token="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"
     )
-    alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict))
+    alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict, return_dict=True))
 
     # support for multiple splits
     train_prompts = utils.flatten_nested_pystruct(

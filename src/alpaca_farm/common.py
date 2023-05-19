@@ -266,6 +266,39 @@ def get_pretrained_model_name_with_model_name_or_path(model_name_or_path: AnyPat
     return str(pretrained_model_name)
 
 
+def get_model_name_with_model_name_or_path(model_name_or_path: AnyPath) -> str:
+    """Get the model name 'stem' with a model name or path.
+
+    If it's a pretrained model, return the original name. Note `Path.stem` does not do the job!
+    If it's not a pretrained model, return the `Path.stem`.
+
+    Examples:
+    >>> get_model_name_with_model_name_or_path(
+        "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_opt_6b_clean_v0_3ep")
+    "sft_opt_6b_clean_v0_3ep"
+
+    >>> get_model_name_with_model_name_or_path("facebook/opt-125m")
+    "facebook/opt-125m"  # This should not be "opt-125m".
+    """
+    if not model_name_or_path_exists(model_name_or_path):
+        raise ValueError(f"Model name or path does not exist: {model_name_or_path}")
+
+    # handling expiter multi-round models
+    # multi-round models has a subfolder with the round number
+    # e.g. expiter_v0_5k_rerankn=32_2ep_3rounds_cont_sft_v6_llama_7b_regen_v7_3ep/expiter_round_2
+    expiter_multiround_regex = re.compile(r"/expiter_round_[0-9]+$")
+    model_name_or_path = str(model_name_or_path)
+    if bool(expiter_multiround_regex.search(model_name_or_path)):
+        base_model_name = expiter_multiround_regex.sub("", model_name_or_path)
+        base_model_name = get_model_name_with_model_name_or_path(base_model_name)
+        return base_model_name + "_round" + model_name_or_path.split("_round_")[-1]
+
+    if os.path.isdir(model_name_or_path):
+        # Don't use Path.stem, as that doesn't support folder names with dots.
+        return os.path.basename(Path(model_name_or_path))
+    return str(model_name_or_path)
+
+
 def get_transformer_hidden_size(model: transformers.PreTrainedModel):
     if isinstance(model, transformers.GPT2LMHeadModel):
         hidden_size_attr_name = "n_embd"

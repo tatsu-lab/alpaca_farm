@@ -50,7 +50,8 @@ def load_model_and_tokenizer_for_inference(
     logger.warning(f"Loading model for inference: {model_name_or_path}")
 
     local_rank, world_size = distributed_utils.setup()
-    device = torch.device("cuda", max(local_rank, 0)) if torch.cuda.is_available() else torch.device("cpu")
+    local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
+    device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
     default_model_kwargs = dict(low_cpu_mem_usage=True, device_map={"": device}, cache_dir=cache_dir)
     if model_kwargs is None:
         model_kwargs = default_model_kwargs
@@ -125,6 +126,7 @@ def decode_prompts_with_huggingface_given_model(
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = tf32  # noqa
 
     local_rank, world_size = distributed_utils.setup()  # This should not re-setup if already setup.
+    local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
 
     tokenizer = copy.deepcopy(tokenizer)  # Don't tamper with the original tokenizer.
@@ -273,7 +275,7 @@ def decode_prompts_with_huggingface_given_model(
 
 
 def decode_prompts_with_huggingface(
-    model_name: str,
+    model_name_or_path: str,
     prompts: Sequence[str],
     decoding_args: HFDecodingArguments,
     cache_dir=constants.DEFAULT_CACHE_DIR,
@@ -292,7 +294,7 @@ def decode_prompts_with_huggingface(
     Args:
         prompts: A sequence of string prompts.
         decoding_args: Decoding arguments.
-        model_name: The name or path of the huggingface model. If it is a path, the directory location should also store
+        model_name_or_path: The name or path of the huggingface model. If it is a path, the directory location should also store
             the tokenizer.
         per_device_batch_size: The batch size per device for decoding.
         cache_dir: The directory to cache the huggingface model.
@@ -312,7 +314,7 @@ def decode_prompts_with_huggingface(
         otherwise, a list of lists of string responses.
     """
     model, tokenizer = load_model_and_tokenizer_for_inference(
-        model_name_or_path=model_name,
+        model_name_or_path=model_name_or_path,
         cache_dir=cache_dir,
         model_kwargs=dict(torch_dtype=utils.convert_str_dtype_to_torch_dtype(mixed_precision)),
     )
