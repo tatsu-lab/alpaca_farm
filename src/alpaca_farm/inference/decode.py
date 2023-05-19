@@ -125,7 +125,7 @@ def decode_prompts_with_huggingface_given_model(
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = tf32  # noqa
 
     local_rank, world_size = distributed_utils.setup()  # This should not re-setup if already setup.
-    device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device("cuda", max(local_rank, 0)) if torch.cuda.is_available() else torch.device("cpu")
 
     tokenizer = copy.deepcopy(tokenizer)  # Don't tamper with the original tokenizer.
     tokenizer.padding_side = "left"
