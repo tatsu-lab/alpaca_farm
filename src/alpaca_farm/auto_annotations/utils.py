@@ -1,7 +1,9 @@
+import copy
 import itertools
+import re
 from pathlib import Path
 import random
-from typing import Sequence, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -60,7 +62,7 @@ def random_derangement(arr, max_loop=10, seed=None):
     idcs = list(range(len(arr)))
     shuffled = list(range(len(arr)))
 
-    for i in range(max_loop):
+    for _ in range(max_loop):
         random.shuffle(shuffled)
         if is_derangement(idcs, shuffled):
             return arr[shuffled]
@@ -68,3 +70,17 @@ def random_derangement(arr, max_loop=10, seed=None):
     # if no luck then computes all possibilities
     deranged_order = list(set([s for s in itertools.permutations(idcs) if is_derangement(s, idcs)]))
     return arr[list(random.choice(deranged_order))]
+
+
+def find_first_match(text: str, outputs_to_match: dict[str, Any]):
+    """Given text to parse and a dictionary of compiled regex to match, return the first match and corresponding key."""
+    first_match = None
+    first_key = None
+
+    for key, compiled_regex in outputs_to_match.items():
+        match = compiled_regex.search(text)
+        if match and (not first_match or match.start() < first_match.start()):
+            first_match = match
+            first_key = key
+
+    return first_match, first_key

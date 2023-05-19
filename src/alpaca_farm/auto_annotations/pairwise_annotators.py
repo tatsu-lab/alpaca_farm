@@ -323,6 +323,11 @@ class SinglePairwiseAutoAnnotator:
     prompt_templates : dict
         A dictionary of prompts that will be given to `fn_prompter`.
 
+    outputs_to_match : dict
+        A dictionary of outputs to match from the completions. The values should be a regex pattern that should
+        be matched, the keys should be the corresponding preference value. For each completion, the number of patterns
+        that are matched should be equal to the batch_size if not we set all the preferences in that batch to NaN.
+
     fn_decoder : callable or str
         Function in `decoders.py` to use for decoding the output.
 
@@ -337,6 +342,9 @@ class SinglePairwiseAutoAnnotator:
 
     seed : int
         Seed for randomization.
+
+    batch_size : int
+        Number of examples that will be added in a single prompt.
     """
 
     def __init__(
@@ -351,7 +359,7 @@ class SinglePairwiseAutoAnnotator:
         batch_size: int = 1,
     ):
         self.prompt_templates = {k: ann_utils.read_or_return(prompt) for k, prompt in prompt_templates.items()}
-        self.outputs_to_match = outputs_to_match
+        self.outputs_to_match = {k: re.compile(v) for k, v in outputs_to_match.items()}
         self.is_randomize_output_order = is_randomize_output_order
         self.fn_decoder = getattr(decoders, fn_decoder, fn_decoder)
         self.decoder_kwargs = decoder_kwargs
@@ -473,7 +481,31 @@ class SinglePairwiseAutoAnnotator:
 
     def parse_completions(self, completions: list[str]) -> list[int]:
         """Converts the completions into annotations."""
-        pass  # TODO : fill in
+        all_preferences = []
+        for completion in completions:
+            # use a regex to match all outputs on a line. Assumes that there is at most one output to match per line
+            batch_preferences = self._parse_single_batch(completion)
+            if len(batch_preferences) != self.batch_size:
+                logging.warning(
+                    f"""Found {len(batch_preferences)} preferences in {completion} but expected {self.batch_size}.
+                    We are setting all preferences to np.nan."""
+                )
+                batch_preferences = [np.nan] * self.batch_size
+            all_preferences += batch_preferences
+        return all_preferences
+
+    def _parse_single_batch(self, completion: str) -> list[Any]:
+        """Parse a single batch of completions, by returning the keys in which self.outputs_to_match was matched."""
+        completion = copy.deepcopy(completion)
+        responses = []
+        while True:
+            match, key = ann_utils.find_first_match(completion, self.outputs_to_match)
+            if not match:
+                break
+            responses.append(key)
+            # avoid matching the same output twice
+            completion = completion[match.end() :]
+        return responses
 
     def postprocess(self, df_annotated: pd.DataFrame) -> pd.DataFrame:
         """Postprocess the annotated examples."""
