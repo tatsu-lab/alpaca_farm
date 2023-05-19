@@ -17,6 +17,7 @@ def run_decode(
     use_auth_token: Optional[str] = None,
     split="val",
     max_instances=sys.maxsize,
+    per_device_batch_size=4,
     temperature=1.0,
     num_return_sequences=4,
     max_new_tokens=300,
@@ -30,6 +31,7 @@ def run_decode(
         use_auth_token: Optional HuggingFace authentication token.
         split: Split of the dataset to decode.
         max_instances: Maximum number of instances to decode.
+        per_device_batch_size: Batch size for reranking for each device.
         temperature: Temperature for decoding.
         num_return_sequences: Number of sequences to return per each prompt.
         max_new_tokens: Maximum number of new tokens to generate.
@@ -51,6 +53,7 @@ def run_decode(
         decoding_args=decode.HFDecodingArguments(
             temperature=temperature, max_new_tokens=max_new_tokens, num_return_sequences=num_return_sequences
         ),
+        per_device_batch_size=per_device_batch_size,
     )
 
     return_list_dict_data = [
@@ -67,6 +70,7 @@ def run_rerank(
     list_dict_data_or_path: Union[Sequence[Dict], AnyPath],
     scorer_name_or_path: AnyPath,
     output_path: AnyPathOrNone = None,
+    per_device_batch_size=4,
 ):
     """Rerank sequences with reward model.
 
@@ -75,6 +79,7 @@ def run_rerank(
             Each dict should have the keys 'prompt' and 'completion' with string values that can be added together.
         scorer_name_or_path: Name or path of the reward model.
         output_path: Optional path to save the rerank results.
+        per_device_batch_size: Batch size for reranking for each device.
 
     Returns:
         Rerank results as a list of dict data.
@@ -84,7 +89,11 @@ def run_rerank(
 
     sequences = [dict_data["prompt"] + dict_data["completion"] for dict_data in list_dict_data_or_path]
 
-    top_sequences, top_indices = score.rerank_sequences_with_huggingface(sequences, scorer_name_or_path)
+    top_sequences, top_indices = score.rerank_sequences_with_huggingface(
+        sequences=sequences,
+        scorer_name_or_path=scorer_name_or_path,
+        per_device_batch_size=per_device_batch_size,
+    )
 
     return_list_dict_data = [
         {"top_sequence": top_sequence, "top_index": top_index, "scorer_name_or_path": scorer_name_or_path}
@@ -102,6 +111,7 @@ def run_best_of_n(
     prompt_dict_path=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
     use_auth_token: Optional[str] = None,
     split="val",
+    per_device_batch_size=4,
     max_instances=sys.maxsize,
     temperature=1.0,
     num_return_sequences=4,
@@ -114,6 +124,7 @@ def run_best_of_n(
         use_auth_token=use_auth_token,
         split=split,
         max_instances=max_instances,
+        per_device_batch_size=per_device_batch_size,
         temperature=temperature,
         num_return_sequences=num_return_sequences,
         max_new_tokens=max_new_tokens,
@@ -122,6 +133,7 @@ def run_best_of_n(
     rerank_return_list_dict_data = run_rerank(
         list_dict_data_or_path=decode_return_list_dict_data,
         scorer_name_or_path=scorer_name_or_path,
+        per_device_batch_size=per_device_batch_size,
     )
     print(rerank_return_list_dict_data)
 
