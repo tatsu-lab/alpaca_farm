@@ -275,7 +275,7 @@ def decode_prompts_with_huggingface_given_model(
 
 
 def decode_prompts_with_huggingface(
-    model_name: str,
+    model_name_or_path: str,
     prompts: Sequence[str],
     decoding_args: HFDecodingArguments,
     cache_dir=constants.DEFAULT_CACHE_DIR,
@@ -294,7 +294,7 @@ def decode_prompts_with_huggingface(
     Args:
         prompts: A sequence of string prompts.
         decoding_args: Decoding arguments.
-        model_name: The name or path of the huggingface model. If it is a path, the directory location should also store
+        model_name_or_path: The name or path of the huggingface model. If it is a path, the directory location should also store
             the tokenizer.
         per_device_batch_size: The batch size per device for decoding.
         cache_dir: The directory to cache the huggingface model.
@@ -314,7 +314,7 @@ def decode_prompts_with_huggingface(
         otherwise, a list of lists of string responses.
     """
     model, tokenizer = load_model_and_tokenizer_for_inference(
-        model_name_or_path=model_name,
+        model_name_or_path=model_name_or_path,
         cache_dir=cache_dir,
         model_kwargs=dict(torch_dtype=utils.convert_str_dtype_to_torch_dtype(mixed_precision)),
     )
