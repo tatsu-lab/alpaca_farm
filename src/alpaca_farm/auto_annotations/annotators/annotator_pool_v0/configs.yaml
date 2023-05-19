@@ -1,7 +1,7 @@
 gpt4_1 : # gpt-4-0314_pairwise_v1_b4_chatml-chat_CoT_JSON_temp=1.0 in old code
   prompt_templates:
-    with_inputs: "gpt4_1_with_inputs.txt"
-    without_inputs: "gpt4_1_without_inputs.txt"
+    with_inputs: "chatml_b4_cot_json_with_inputs.txt"
+    without_inputs: "chatml_b4_cot_json_without_inputs.txt"
   fn_prompter: "format_with_or_without_inputs"
   prompter_kwargs: {}
   fn_decoder: "openai_completions"
@@ -18,8 +18,26 @@ gpt4_1 : # gpt-4-0314_pairwise_v1_b4_chatml-chat_CoT_JSON_temp=1.0 in old code
 
 gpt4_2 : # gpt-4-0314_pairwise_diverse-diana_v0_b5_chatml-prompt_short_temp=1.0
   prompt_templates:
-    with_inputs: "gpt4_2_with_inputs.txt"
-    without_inputs: "gpt4_2_without_inputs.txt"
+    with_inputs: "chatml_b5_diana_with_inputs.txt"
+    without_inputs: "chatml_b5_diana_without_inputs.txt"
+  fn_prompter: "format_with_or_without_inputs"
+  prompter_kwargs: {}
+  fn_decoder: "openai_completions"
+  decoder_kwargs:
+      model_name: "gpt-4-0314"
+      max_completions_tokens: 250
+      temperature: 1.0
+  fn_parser: "simple_parser"
+  parser_kwargs:
+    outputs_to_match:
+      1: "Output (a"
+      2: "Output (b"
+    batch_size: 5
+
+gpt4_3 : # gpt-4-0314_pairwise_vH_b5_chatml-prompt_short_temp=1.0
+  prompt_templates:
+    with_inputs: "chatml_b5_with_inputs.txt"
+    without_inputs: "chatml_b5_without_inputs.txt"
   fn_prompter: "format_with_or_without_inputs"
   prompter_kwargs: {}
   fn_decoder: "openai_completions"
@@ -34,29 +52,105 @@ gpt4_2 : # gpt-4-0314_pairwise_diverse-diana_v0_b5_chatml-prompt_short_temp=1.0
       2: " Output (b"
     batch_size: 5
 
+gpt4_4 : # gpt-4-0314_pairwise_v2_b1_chatml-chat_reasoning_temp=1.0
+  prompt_templates:
+    with_inputs: "chatml_b1_chat_with_inputs.txt"
+    without_inputs: "chatml_b1_chat_without_inputs.txt"
+  fn_prompter: "format_with_or_without_inputs"
+  prompter_kwargs: {}
+  fn_decoder: "openai_completions"
+  decoder_kwargs:
+      model_name: "gpt-4-0314"
+      max_completions_tokens: 20
+      temperature: 1.0
+      # messing with tokens is not necessary for GPT4 but we use the same prompt for chatGPT
+      tokens_to_avoid: ['Both', 'Neither', 'None', ' Both', ' Neither', 'Either', 'depends', 'context', 'It', 'both', 'Sorry']
+      tokens_to_favor: [" Output (a)", " Output (b)"]
+  fn_parser: "simple_parser"
+  parser_kwargs:
+    outputs_to_match:
+      1: "Output (a)"
+      2: "Output (b)"
+    batch_size: 1
 
+gpt4_5 : # gpt-4-0314_pairwise_diverse-joeX_v0_b5_chatml-prompt_short_temp=1.0
+  prompt_templates:
+    with_inputs: "chatml_b5_joe_with_inputs.txt"
+    without_inputs: "chatml_b5_joe_without_inputs.txt"
+  fn_prompter: "format_with_or_without_inputs"
+  prompter_kwargs: {}
+  fn_decoder: "openai_completions"
+  decoder_kwargs:
+      model_name: "gpt-4-0314"
+      max_completions_tokens: 250
+      temperature: 1.0
+  fn_parser: "simple_parser"
+  parser_kwargs:
+    outputs_to_match:
+      1: "Output (a"
+      2: "Output (b"
+    batch_size: 5
 
+chatgpt_1 : # gpt-3.5-turbo_pairwise_vH_b1_chatml-prompt_short_temp=1.0
+  prompt_templates:
+    with_inputs: "chatml_b1_with_inputs.txt"
+    without_inputs: "chatml_b1_without_inputs.txt"
+  fn_prompter: "format_with_or_without_inputs"
+  prompter_kwargs: {}
+  fn_decoder: "openai_completions"
+  decoder_kwargs:
+      model_name: "gpt-3.5-turbo-0301"
+      max_completions_tokens: 50
+      temperature: 1.0
+      tokens_to_avoid: ['Both', 'Neither', 'None', ' Both', ' Neither', 'Either', 'depends', 'context','It', 'both','Sorry']
+      tokens_to_favor: [ "Output (a)", "Output (b)" ]
+  fn_parser: "simple_parser"
+  parser_kwargs:
+    outputs_to_match:
+      1: "Output (a)"
+      2: "Output (b)"
+    batch_size: 1
 
+chatgpt_2 : # gpt-3.5-turbo-0301_pairwise_v1_b1_chatml-chat_CoT_JSON_temp=1.0
+  prompt_templates:
+    with_inputs: "chatml_b1_cot_json_with_inputs.txt"
+    without_inputs: "chatml_b1_cot_json_without_inputs.txt"
+  fn_prompter: "format_with_or_without_inputs"
+  prompter_kwargs: {}
+  fn_decoder: "openai_completions"
+  decoder_kwargs:
+      model_name: "gpt-3.5-turbo-0301"
+      max_completions_tokens: 150
+      temperature: 1.0
+      tokens_to_avoid: ['Both', 'Neither', 'None', ' Both', ' Neither', 'Either', 'depends', 'context','It', 'both','Sorry']
+  fn_parser: "simple_parser"
+  parser_kwargs:
+    outputs_to_match:
+      1: " true"
+      2: " false"
+    batch_size: 1
 
-#
-#prompt_templates (dict): a dictionary of prompts or path to the prompts. The dictionary of (loaded) prompts
-#will be given to `fn_prompter`.
-#- fn_prompter (str): function in `prompters.py` to use for formatting the prompt.
-#- fn_decoder (str): function in `decoders.py` to use for decoding the output.
-#- fn_parser (str): function in `parsers.py` to use for parsing the output. E.g.
-#- prompter_kwargs (dict): kwargs for the formatter. E.g. prompt_with_inputs, prompt_without_inputs, is_randomize_output_order
-#- decoder_kwargs (dict): kwargs for fn_decode. E.g. model_name, max_completions_tokens
-#- parser_kwargs (dict): kwargs for fn_parse. E.g. batch size
+chatgpt_3 : # gpt-3.5-turbo_pairwise_v2_b1_chatml-chat_reasoning_temp=1.0
+  prompt_templates:
+    with_inputs: "chatml_b1_chat_with_inputs.txt"
+    without_inputs: "chatml_b1_chat_without_inputs.txt"
+  fn_prompter: "format_with_or_without_inputs"
+  prompter_kwargs: {}
+  fn_decoder: "openai_completions"
+  decoder_kwargs:
+      model_name: "gpt-3.5-turbo-0301"
+      max_completions_tokens: 20
+      temperature: 1.0
+      tokens_to_avoid: ['Both', 'Neither', 'None', ' Both', ' Neither', 'Either', 'depends', 'context','It', 'both','Sorry']
+      tokens_to_favor: [ "Output (a)", "Output (b)" ]
+  fn_parser: "simple_parser"
+  parser_kwargs:
+    outputs_to_match:
+      1: "Output (a)"
+      2: "Output (b)"
+    batch_size: 1
 
-
-#    ,
-#    "gpt-4-0314_pairwise_vH_b5_chatml-prompt_short_temp=1.0",
-#    "gpt-4-0314_pairwise_v2_b1_chatml-chat_reasoning_temp=1.0",
-#    "gpt-4-0314_pairwise_diverse-joeX_v0_b5_chatml-prompt_short_temp=1.0",
-#    ###
-#    "gpt-3.5-turbo_pairwise_vH_b1_chatml-prompt_short_temp=1.0",
-#    "gpt-3.5-turbo-0301_pairwise_v1_b1_chatml-chat_CoT_JSON_temp=1.0",
-#    "gpt-3.5-turbo_pairwise_v2_b1_chatml-chat_reasoning_temp=1.0",
+#    "",
 #    "gpt-3.5-turbo_pairwise_v0_b1_chatml-chat_reasoning_temp=1.0",
 #    ###
 #    "text-davinci-003_v1Reasoning_b5-pairwise_temp=1.0",
