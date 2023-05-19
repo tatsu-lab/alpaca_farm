@@ -229,7 +229,7 @@ def preprocess_for_reward_modeling(
     return packaged_data
 
 
-def format_prompt(example, prompt_dict: dict) -> dict:
+def format_prompt(example, prompt_dict: dict, return_dict=True) -> dict:
     """Formats a prompt with a prompt_dict formatter.
 
     Args:
@@ -237,6 +237,7 @@ def format_prompt(example, prompt_dict: dict) -> dict:
         prompt_dict: Dictionary containing the keys "instruction_only_prompt" and "instruction_input_prompt" which have
             placeholders corresponding to the keys from `example`. E.g. "{instruction}".
             You can use the output of `db_io.get_prompt_row`.
+        return_dict: Whether to return a dict or a string.
 
     Returns:
         formatted_prompt : str
@@ -254,23 +255,26 @@ def format_prompt(example, prompt_dict: dict) -> dict:
     else:
         formatted_prompt = prompt_dict["prompt_inputs"].format_map(example)
 
-    return dict(prompt=formatted_prompt)
+    return dict(prompt=formatted_prompt) if return_dict else formatted_prompt
 
 
 def format_prompt_with_huggingface_dataset(
     huggingface_dataset,
     prompt_dict: dict,
     df_postprocessor: Optional[Callable] = None,
+    return_dict=True,
 ) -> dict:
     df = pd.DataFrame(huggingface_dataset)
     if df_postprocessor is not None:
         df = df_postprocessor(df)
     list_dict_data = df.to_dict(orient="records")
 
-    prompts = [format_prompt(example, prompt_dict) for example in list_dict_data]
+    prompts = [format_prompt(example, prompt_dict, return_dict) for example in list_dict_data]
     metadata = {"prompt_dict": prompt_dict}
 
-    return dict(prompts=prompts, list_dict_data=list_dict_data, metadata=metadata)
+    if return_dict:
+        return dict(prompts=prompts, list_dict_data=list_dict_data, metadata=metadata)
+    return prompts
 
 
 class SFTDataset(Dataset):
