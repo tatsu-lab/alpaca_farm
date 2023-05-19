@@ -70,10 +70,9 @@ def run_rerank(
 
 
 def run_best_of_n(
-    decoder_name_or_path,
-    scorer_name_or_path,
+    decoder_name_or_path: AnyPath,
+    scorer_name_or_path: AnyPath,
     prompt_dict_path=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
-    output_path: AnyPathOrNone = None,
     use_auth_token: Optional[str] = None,
     split="val",
     max_instances=sys.maxsize,
@@ -82,7 +81,22 @@ def run_best_of_n(
     max_new_tokens=300,
 ):
     """Chain together decoding and rerank."""
-    pass
+    decode_return_list_dict_data = run_decode(
+        decoder_name_or_path=decoder_name_or_path,
+        prompt_dict_path=prompt_dict_path,
+        use_auth_token=use_auth_token,
+        split=split,
+        max_instances=max_instances,
+        temperature=temperature,
+        num_return_sequences=num_return_sequences,
+        max_new_tokens=max_new_tokens,
+    )
+    print(decoder_name_or_path)
+    rerank_return_list_dict_data = run_rerank(
+        list_dict_data_or_path=decode_return_list_dict_data,
+        scorer_name_or_path=scorer_name_or_path,
+    )
+    print(rerank_return_list_dict_data)
 
 
 def main(task, **kwargs):
