@@ -26,6 +26,8 @@ import numpy as np
 import pandas as pd
 import scipy
 
+# TODO: @yann simplify converters now that you know it's wither 2 or 4 choices
+
 
 @dataclasses.dataclass
 class LogprobsColumnPatch(object):
