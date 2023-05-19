@@ -8,11 +8,11 @@ from typing import Any, Sequence, Union
 import numpy as np
 import pandas as pd
 
-from ..types import AnyPath
+from .. import types
 from .. import utils
 
 
-def read_or_return(to_read: Union[AnyPath, str], **kwargs):
+def read_or_return(to_read: Union[types.AnyPath, str], **kwargs):
     """Read a file or return the input if it is already a string."""
     try:
         with to_read.open(Path(to_read), **kwargs) as f:

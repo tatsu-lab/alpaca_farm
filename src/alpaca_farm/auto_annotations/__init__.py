@@ -1,1 +1,1 @@
-from pairwise_annotators import PairwiseAutoAnnotator
+# unfortunately due to relative imports we cannot import main objects here

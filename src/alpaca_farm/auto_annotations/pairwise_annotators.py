@@ -10,7 +10,7 @@ import re
 
 import yaml
 
-from ..types import AnyPath
+from .. import types
 from . import decoders, utils as ann_utils
 
 
@@ -62,10 +62,10 @@ class PairwiseAutoAnnotator:
 
     def __init__(
         self,
-        annotators_config: Union[AnyPath, list[dict[str, Any]]],
+        annotators_config: Union[types.AnyPath, list[dict[str, Any]]],
         seed: Optional[int] = None,
         is_avoid_reannotations: bool = True,
-        saving_path: Optional[AnyPath] = None,
+        saving_path: Optional[types.AnyPath] = None,
         input_keys: Sequence[str] = ("instruction", "input"),
         output_keys: Sequence[str] = ("output_1", "output_2"),
     ):
@@ -246,7 +246,7 @@ class PairwiseAutoAnnotator:
         return df_to_annotate
 
     def _initialize_annotators(
-        self, annotators_config: Union[AnyPath, dict[str, dict[str, Any]]]
+        self, annotators_config: Union[types.AnyPath, dict[str, dict[str, Any]]]
     ) -> dict[str, Callable]:
         """Load all the configs and prompts if necessary."""
         if not isinstance(annotators_config, dict):
