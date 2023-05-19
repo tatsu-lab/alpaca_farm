@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import os
+import pathlib
 from typing import List, Optional, Sequence, Union
 
 import torch
 from torch import Tensor
 
-AnyPath = Union[str, os.PathLike]
+AnyPath = Union[str, os.PathLike, pathlib.Path]
 AnyPathOrNone = Optional[AnyPath]
 
 Numeric = Union[int, float]
