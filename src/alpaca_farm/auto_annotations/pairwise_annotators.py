@@ -57,6 +57,11 @@ class PairwiseAutoAnnotator:
 
     output_keys : tuple of str, optional
         Keys use to distinguish outputs.
+
+    p_label_flip : float, optional
+        Probability of flipping the label (ie adds noise by taking a mixture between predicted label and
+        2*p_label_flip of independent coin flip). If None, will not flip the label. In AlpacaFarm we use 0.25
+        for training.
     """
 
     def __init__(
@@ -67,6 +72,7 @@ class PairwiseAutoAnnotator:
         saving_path: Optional[types.AnyPath] = None,
         input_keys: Sequence[str] = ("instruction", "input"),
         output_keys: Sequence[str] = ("output_1", "output_2"),
+        p_label_flip: Optional[float] = None,
     ):
         self.seed = seed
         self.is_avoid_reannotations = is_avoid_reannotations
@@ -74,6 +80,7 @@ class PairwiseAutoAnnotator:
         self.output_keys = list(output_keys)
         self.input_output_keys = self.input_keys + self.output_keys
         self.all_keys = self.input_keys + self.output_keys + ["annotator"]
+        self.p_label_flip = p_label_flip
 
         self.annotators = self._initialize_annotators(annotators_config)
         self.saving_path = saving_path
@@ -198,9 +205,11 @@ class PairwiseAutoAnnotator:
                     """
                 )
 
-        return self.annotate_pairs(df_to_annotate)
+        return self.annotate_pairs(df_to_annotate, p_label_flip=p_label_flip)
 
-    def annotate_pairs(self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame]) -> list[dict[str, Any]]:
+    def annotate_pairs(
+        self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame], p_label_flip: Optional[float] = None
+    ) -> list[dict[str, Any]]:
         """Annotates the given examples, which contain both `"output_1"` and `"output_2"` keys.
 
         Parameters
@@ -223,6 +232,18 @@ class PairwiseAutoAnnotator:
         annotated = self._postprocess(df_annotated)
         return annotated
 
+    def set_noise(self, p_label_flip: float):
+        """Set the noise level for the annotators.
+
+        Parameters
+        ----------
+        p_label_flip : float, optional
+            Probability of flipping the label (ie adds noise by taking a mixture between predicted label and
+            2*p_label_flip of independent coin flip). If None, will not flip the label. In AlpacaFarm we use 0.25
+            for training.
+        """
+        self.p_label_flip = p_label_flip
+
     def _preprocess(self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame]) -> pd.DataFrame:
         """Preprocess the examples to annotate. In particular takes care of filtering unnecessary examples."""
         if not isinstance(to_annotate, pd.DataFrame):
@@ -241,6 +262,21 @@ class PairwiseAutoAnnotator:
 
         idcs_is_same_outputs = df_to_annotate["output_1"] == df_to_annotate["output_2"]
         df_to_annotate.loc[idcs_is_same_outputs, "preference"] = 0
+
+        # adds random noise => avoids annotating examples that will be noised out.
+        if self.p_label_flip:
+            idcs_no_pref = df_to_annotate["preference"].isna()
+            # if you have 25% change of flipping the label, you have 50% chance of selecting random label
+            p_noise = self.p_label_flip * 2
+            df_to_annotate.loc[idcs_no_pref, "preference"] = df_to_annotate.loc[idcs_no_pref].apply(
+                # we add "noisy_label" at the beginning to use ~independent seeds between tasks
+                lambda x: ann_utils.random_seeded_choice(  # seed on inputs for reproducibility
+                    seed="noisy_label" + x["instruction"] + x["input"],
+                    choices=[np.nan, 1, 2],
+                    p=[1 - p_noise, self.p_label_flip, self.p_label_flip],
+                ),
+                axis=1,
+            )
 
         return df_to_annotate
 
@@ -266,7 +302,9 @@ class PairwiseAutoAnnotator:
         # set the annotater for each example
         df_to_annotate["annotator"] = df_to_annotate.apply(
             lambda x: ann_utils.random_seeded_choice(
-                seed=x["instruction"] + x["input"], choices=self.annotators.keys()
+                # we add "annotator" at the beginning to not use the same seed for all tasks
+                seed="annotator" + x["instruction"] + x["input"],
+                choices=self.annotators.keys(),
             ),
             axis=1,
         )
@@ -404,7 +442,10 @@ class SinglePairwiseAutoAnnotator:
         if self.is_randomize_output_order:
             # randomize order of output_1, output_2 base on inputs
             df_to_annotate["is_switched_outputs"] = df_to_annotate.apply(
-                lambda x: ann_utils.random_seeded_choice(seed=x["instruction"] + x["input"], choices=[False, True]),
+                # we add "is_switched_outputs" at the beginning to not use the same seed for all tasks
+                lambda x: ann_utils.random_seeded_choice(
+                    seed="is_switched_outputs" + x["instruction"] + x["input"], choices=[False, True]
+                ),
                 axis=1,
             )
             df_to_annotate = ann_utils.shuffle_pairwise_preferences(
