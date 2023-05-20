@@ -33,8 +33,7 @@ class DataArguments:
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     pad_token: str = field(default=constants.DEFAULT_PAD_TOKEN)
-    model_cache_dir: str = field(default=constants.FAST_MODEL_CACHE_DIR)
-    tokenizer_cache_dir: str = field(default=constants.DEFAULT_CACHE_DIR)
+    cache_dir: str = field(default=constants.DEFAULT_CACHE_DIR)
     wandb_project: str = field(default=constants.WANDB_PROJECT)
     flash_attn: bool = field(default=True, metadata={"help": "Whether to use flash attention."})
     optim: str = field(default="adamw_torch")
@@ -52,10 +51,17 @@ class TrainingArguments(transformers.TrainingArguments):
             "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
         },
     )
+    initialize_model_on_cpu: bool = field(
+        default=False,
+        metadata={
+            "help": "Whether to initialize the model on CPU. "
+            "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
+        },
+    )
     resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
 
 
-def sft():
+def main():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     os.environ["WANDB_PROJECT"] = training_args.wandb_project
@@ -64,6 +70,10 @@ def sft():
         ctx_mgr = contextlib.nullcontext()
         device_map = None
         low_cpu_mem_usage = None
+    elif training_args.initialize_model_on_cpu:
+        ctx_mgr = contextlib.nullcontext()
+        device_map = None
+        low_cpu_mem_usage = True
     else:
         ctx_mgr = common.staggered_object_creation(local_rank=training_args.local_rank)
         device_map = {"": training_args.device.index}
@@ -76,7 +86,7 @@ def sft():
             fp16=training_args.fp16,
             bf16=training_args.bf16,
             config=transformers.AutoConfig.from_pretrained(model_args.model_name_or_path),
-            cache_dir=training_args.model_cache_dir,
+            cache_dir=training_args.cache_dir,
             low_cpu_mem_usage=low_cpu_mem_usage,
             device_map=device_map,
         )
@@ -84,7 +94,7 @@ def sft():
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
-        cache_dir=training_args.tokenizer_cache_dir,
+        cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side="right",  # Ensures properly masking out the source tokens.
     )
@@ -125,4 +135,4 @@ def sft():
 
 
 if __name__ == "__main__":
-    sft()
+    main()
