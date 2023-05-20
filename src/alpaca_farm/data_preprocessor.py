@@ -324,10 +324,7 @@ def make_supervised_data_module(
 ):
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
-    # TODO: remove auth token at the end.
-    alpaca_instructions = datasets.load_dataset(
-        "tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token="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"
-    )
+    alpaca_instructions = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_instructions")
     alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict, return_dict=True))
 
     # support for multiple splits
@@ -445,9 +442,7 @@ def make_binary_reward_modeling_data_module(
 ):
     # TODO: remove auth token at the end.
     prompt_dict = utils.jload(data_args.prompt_dict_path)
-    alpaca_human_preference = datasets.load_dataset(
-        data_args.dataset_path, data_args.dataset_name, use_auth_token="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"
-    )
+    alpaca_human_preference = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
     train_dataset = BinaryRewardModelingDataset(
         huggingface_dataset=alpaca_human_preference["preference"],
         prompt_dict=prompt_dict,
