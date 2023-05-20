@@ -14,7 +14,7 @@ from torch.distributed.fsdp import ShardingStrategy
 from torch.utils.data import DataLoader, TensorDataset
 from transformers.trainer_utils import enable_full_determinism, set_seed
 
-from . import accelerate_patch, common, logging, rl_utils
+from . import accelerate_patch, common, data_preprocessor, logging, rl_utils
 from .inference import decode, score
 from .types import LRScheduler, Tensor
 
@@ -27,8 +27,8 @@ class RLTrainer(object):
     def __init__(
         self,
         args,
-        train_dataset: data_utils.QueryResponseDataset,
-        eval_dataset: data_utils.QueryResponseDataset,
+        train_dataset: data_preprocessor.QueryResponseDataset,
+        eval_dataset: data_preprocessor.QueryResponseDataset,
         data_collator: Callable,
         policy: nn.Module,
         ref_policy: nn.Module,
