@@ -60,7 +60,7 @@ def shuffle_pairwise_preferences(df: pd.DataFrame, arr_is_shuffle: Sequence[int]
 
 def is_derangement(arr1, arr2):
     """Whether 2 arrays are derangements of one another"""
-    return any([a != b for a, b in utils.zip_(arr1, arr2)])
+    return all([a != b for a, b in utils.zip_(arr1, arr2)])
 
 
 def random_derangement(arr, max_loop=10, seed=None):
