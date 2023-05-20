@@ -186,7 +186,9 @@ def make_prompts(
     # padding if you don't have enough examples
     n_to_pad = (batch_size - len(df)) % batch_size
     padding = pd.DataFrame([padding_example] * n_to_pad)
+    padding["is_padding"] = True
     df_out = pd.concat([df, padding], axis=0, ignore_index=True)
+    df_out["is_padding"] = df_out["is_padding"].fillna(False)
 
     prompts = []
     # ugly for loops, not trivial to vectorize because of the batching

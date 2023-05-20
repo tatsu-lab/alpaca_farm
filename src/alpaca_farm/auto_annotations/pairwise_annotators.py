@@ -29,6 +29,9 @@ class PairwiseAutoAnnotator:
         - annotate_head2head: annotate a pair of sequence of outputs, each containing `"output"` which will be merged
             into a single sequence of paired outputs. Useful for evaluation against a reference.
 
+    Other functions that are useful for annotating:
+        - set_noise: set the noise level for the annotators.
+
     Parameters
     ----------
     annotators_config : Path or list of dict
@@ -61,7 +64,7 @@ class PairwiseAutoAnnotator:
     p_label_flip : float, optional
         Probability of flipping the label (ie adds noise by taking a mixture between predicted label and
         2*p_label_flip of independent coin flip). If None, will not flip the label. In AlpacaFarm we use 0.25
-        for training.
+        for training. You can set this later on using `set_noise`.
     """
 
     def __init__(
@@ -205,11 +208,9 @@ class PairwiseAutoAnnotator:
                     """
                 )
 
-        return self.annotate_pairs(df_to_annotate, p_label_flip=p_label_flip)
+        return self.annotate_pairs(df_to_annotate)
 
-    def annotate_pairs(
-        self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame], p_label_flip: Optional[float] = None
-    ) -> list[dict[str, Any]]:
+    def annotate_pairs(self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame]) -> list[dict[str, Any]]:
         """Annotates the given examples, which contain both `"output_1"` and `"output_2"` keys.
 
         Parameters
@@ -252,13 +253,9 @@ class PairwiseAutoAnnotator:
         else:
             df_to_annotate = to_annotate.copy()
 
-        if "preference" in df_to_annotate.columns and not df_to_annotate["preference"].isna().all():
-            logging.warning(
-                """Preference column is already in the dataframe and has non NaN values. We will only
-            add annotations to missing preferences."""
-            )
-        else:
-            df_to_annotate["preference"] = np.nan
+        if "preference" in df_to_annotate.columns:
+            logging.warning("""Preference column is already in the dataframe. We will overwrite it.""")
+        df_to_annotate["preference"] = np.nan
 
         # remove duplicates because you only need to annotate one of them
         df_to_annotate = df_to_annotate.drop_duplicates(subset=self.input_output_keys)
@@ -315,9 +312,6 @@ class PairwiseAutoAnnotator:
             ),
             axis=1,
         )
-        import pdb
-
-        pdb.set_trace()
 
         df_annotated = df_to_annotate
         for annotator in self.annotators.keys():
@@ -329,14 +323,17 @@ class PairwiseAutoAnnotator:
 
             df_annotated = self._merge_annotations(df_annotated, curr_annotated)
 
-        return df_to_annotate
+        return df_annotated
 
     def _store_annotations_(self, df_annotated: pd.DataFrame):
         """Store all the annotations in memory and potentially to json."""
-        self.df_annotations = pd.concat([self.df_annotations, df_annotated], axis=0, ignore_index=True)
+        if self.df_annotations is None:
+            self.df_annotations = df_annotated
+        else:
+            self.df_annotations = pd.concat([self.df_annotations, df_annotated], axis=0, ignore_index=True)
 
         if self.saving_path is not None:
-            self.df_annotations.to_json(self.saving_path, orient="records")
+            self.df_annotations.to_json(self.saving_path, orient="records", indent=2)
 
     def _load_annotations(self) -> Optional[pd.DataFrame]:
         """Load all the annotations from json."""
@@ -518,6 +515,9 @@ class SinglePairwiseAutoAnnotator:
 
     def postprocess(self, df_annotated: pd.DataFrame) -> pd.DataFrame:
         """Postprocess the annotated examples."""
+
+        # remove padding examples when using batch_size > 1
+        df_annotated = df_annotated.query("is_padding == False").drop(columns=["is_padding"])
 
         arr_is_na = df_annotated["preference"].isna()
         if arr_is_na.any():
