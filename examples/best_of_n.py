@@ -87,11 +87,14 @@ def run_rerank(
     if isinstance(list_dict_data_or_path, AnyPath):
         list_dict_data_or_path = utils.jload(list_dict_data_or_path)
 
-    sequences = [dict_data["prompt"] + dict_data["completion"] for dict_data in list_dict_data_or_path]
+    sequences = [
+        [dict_data["prompt"] + completion for completion in dict_data["completion"]]
+        for dict_data in list_dict_data_or_path
+    ]
 
     top_sequences, top_indices = score.rerank_sequences_with_huggingface(
         sequences=sequences,
-        scorer_name_or_path=scorer_name_or_path,
+        model_name_or_path=scorer_name_or_path,
         per_device_batch_size=per_device_batch_size,
     )
 
