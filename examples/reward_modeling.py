@@ -6,7 +6,7 @@ from typing import List, Literal
 
 import transformers
 
-from alpaca_farm import common, constants, data_postprocessor, data_preprocessor, logging, trainer_reward_modeling
+from alpaca_farm import common, constants, data_postprocessor, data_utils, logging, trainer_reward_modeling
 from alpaca_farm.auto_feedback import convert
 from alpaca_farm.models import reward_model
 
@@ -141,7 +141,7 @@ def main():
         padding_side="left",  # Ensure reward is always extracted at the last token embedding.
     )
     tokenizer.padding = training_args.padding
-    data_module = data_preprocessor.make_binary_reward_modeling_data_module(
+    data_module = data_utils.make_binary_reward_modeling_data_module(
         tokenizer=tokenizer,
         data_args=data_args,
         training_args=training_args,

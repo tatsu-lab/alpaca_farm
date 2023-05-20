@@ -1,19 +1,15 @@
-# Dataset, DataLoader, Collator goes here.
-# Tokenization also goes here.
-# maps to data_utils.py and data_preprocess.py
 import copy
 import dataclasses
 from typing import Callable, Dict, Optional, Sequence, Union
 
 import datasets
 import einops
-import numpy as np
 import pandas as pd
 import torch
 import transformers
 from torch.utils.data import Dataset
 
-from . import common, constants, logging, torch_ops, utils
+from . import constants, logging, torch_ops, utils
 from .types import Tensor
 
 logger = logging.get_logger(__name__)
@@ -25,10 +21,10 @@ def _get_generator(seed: int) -> torch.Generator:
     return rng
 
 
-def _split_train_into_train_and_eval(train_dataset: Dataset, eval_size: int, seed: int) -> tuple[Dataset, Dataset]:
+def split_train_into_train_and_eval(train_dataset: Dataset, eval_size: int, seed: int) -> tuple[Dataset, Dataset]:
     assert eval_size < len(
-        train_dataset
-    ), "Requested eval_size cannot be equal/larger than original train data size."  # noqa
+        train_dataset  # noqa
+    ), "Requested eval_size cannot be equal/larger than original train data size."
     new_train_size = len(train_dataset) - eval_size  # noqa
     train_dataset, eval_dataset = torch.utils.data.random_split(
         train_dataset, [new_train_size, eval_size], generator=_get_generator(seed)
@@ -317,39 +313,6 @@ class DataCollatorForSFTDataset(object):
         )
 
 
-def make_supervised_data_module(
-    tokenizer: transformers.PreTrainedTokenizer,
-    training_args,
-    data_args,
-):
-    prompt_dict = utils.jload(data_args.prompt_dict_path)
-
-    alpaca_instructions = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_instructions")
-    alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict, return_dict=True))
-
-    # support for multiple splits
-    train_prompts = utils.flatten_nested_pystruct(
-        [alpaca_instructions[split]["prompt"] for split in data_args.train_splits]
-    )
-    train_outputs = utils.flatten_nested_pystruct(
-        [alpaca_instructions[split]["output"] for split in data_args.train_splits]
-    )
-
-    train_dataset = SFTDataset(
-        tokenizer=tokenizer,
-        prompts=train_prompts,
-        targets=train_outputs,
-    )
-    eval_dataset = SFTDataset(
-        tokenizer=tokenizer,
-        prompts=alpaca_instructions["val"]["prompt"],
-        targets=alpaca_instructions["val"]["output"],
-    )
-
-    data_collator = DataCollatorForSFTDataset(tokenizer=tokenizer)
-    return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)
-
-
 class BinaryRewardModelingDataset(Dataset):
     def __init__(
         self,
@@ -433,27 +396,3 @@ class DataCollatorForBinaryRewardModelingDataset(object):
             index_1=index_1,
             choice=choice,
         )
-
-
-def make_binary_reward_modeling_data_module(
-    tokenizer: transformers.PreTrainedTokenizer,
-    data_args,
-    training_args,
-):
-    # TODO: remove auth token at the end.
-    prompt_dict = utils.jload(data_args.prompt_dict_path)
-    alpaca_human_preference = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
-    train_dataset = BinaryRewardModelingDataset(
-        huggingface_dataset=alpaca_human_preference["preference"],
-        prompt_dict=prompt_dict,
-        tokenizer=tokenizer,
-        df_postprocessor=data_args.train_df_postprocessor,
-        end_sequence_with_eos=training_args.end_sequence_with_eos,
-    )
-    train_dataset, eval_dataset = _split_train_into_train_and_eval(
-        train_dataset=train_dataset,
-        eval_size=data_args.eval_size,
-        seed=training_args.seed,
-    )
-    data_collator = DataCollatorForBinaryRewardModelingDataset(tokenizer=tokenizer)
-    return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)

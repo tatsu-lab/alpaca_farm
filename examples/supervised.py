@@ -7,7 +7,7 @@ from typing import Literal, Tuple
 import transformers
 from transformers import Trainer
 
-from alpaca_farm import common, constants, data_preprocessor, logging, utils
+from alpaca_farm import common, constants, data_utils, logging, utils
 
 logger = logging.get_logger(__name__)
 
@@ -103,7 +103,7 @@ def sft():
         special_tokens_dict["unk_token"] = constants.DEFAULT_UNK_TOKEN
     utils.stable_resize_token_embeddings_and_tokenizer(model, tokenizer, special_tokens_dict)
 
-    data_module: dict = data_preprocessor.make_supervised_data_module(
+    data_module: dict = data_utils.make_supervised_data_module(
         tokenizer=tokenizer,
         data_args=data_args,
         training_args=training_args,
