@@ -200,8 +200,8 @@ def _openai_completion(
     shared_kwargs = dict(
         model=model_name,
         **decoding_args.__dict__,
-        **decoding_kwargs,
     )
+    shared_kwargs.update(decoding_kwargs)  # override default arguments if specified
     with multiprocessing.Pool(num_procs) as p:
         partial_completion_helper = functools.partial(
             _openai_completion_helper,

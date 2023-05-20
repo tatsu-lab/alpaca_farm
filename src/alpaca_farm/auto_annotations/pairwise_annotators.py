@@ -388,6 +388,9 @@ class SinglePairwiseAutoAnnotator:
         prompts, df_to_annotate = self.make_prompts(df_to_annotate=df_to_annotate)
 
         completions = self.fn_decoder(prompts=prompts, **self.decoder_kwargs)
+        import pdb
+
+        pdb.set_trace()
 
         df_to_annotate["preference"] = self.parse_completions(completions=completions)
 
@@ -450,7 +453,7 @@ class SinglePairwiseAutoAnnotator:
         all_preferences = []
         for completion in completions:
             # use a regex to match all outputs on a line. Assumes that there is at most one output to match per line
-            batch_preferences = self._parse_single_batch(completion)
+            batch_preferences = ann_utils.parse_batched_completion(completion, self.outputs_to_match)
             if len(batch_preferences) != self.batch_size:
                 logging.warning(
                     f"""Found {len(batch_preferences)} preferences in {completion} but expected {self.batch_size}.
@@ -459,19 +462,6 @@ class SinglePairwiseAutoAnnotator:
                 batch_preferences = [np.nan] * self.batch_size
             all_preferences += batch_preferences
         return all_preferences
-
-    def _parse_single_batch(self, completion: str) -> list[Any]:
-        """Parse a single batch of completions, by returning the keys in which self.outputs_to_match was matched."""
-        completion = copy.deepcopy(completion)
-        responses = []
-        while True:
-            match, key = ann_utils.find_first_match(completion, self.outputs_to_match)
-            if not match:
-                break
-            responses.append(key)
-            # avoid matching the same output twice
-            completion = completion[match.end() :]
-        return responses
 
     def postprocess(self, df_annotated: pd.DataFrame) -> pd.DataFrame:
         """Postprocess the annotated examples."""
