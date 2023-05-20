@@ -41,3 +41,12 @@ def pad_sequence_from_left(
 def compute_logprobs(logits: Tensor, labels: Tensor, ignore_index: int) -> Tensor:
     """Compute per-token logprobs, zeroing out places with ignore_index (padding)."""
     return -F.cross_entropy(logits.permute(0, 2, 1), labels, reduction="none", ignore_index=ignore_index)
+
+
+def whiten(values: Tensor, shift_mean=True, epsilon=1e-8) -> Tensor:
+    assert values.size(0) >= 8, f"Internal error: Minibatch size {values.size(0)} is insufficient for whitening."
+    mean, std = values.mean(), values.std(unbiased=False)  # noqa
+    whitened = (values - mean) / (std + epsilon)
+    if not shift_mean:
+        whitened = whitened + mean
+    return whitened

@@ -209,6 +209,22 @@ def safe_save_model_for_hf_trainer(
         logger.warning(f"Saving model took {time.perf_counter() - now:.2f} seconds.")
 
 
+def flatten_dict(nested, sep=".", postprocess_fn=lambda *args: args):
+    def rec(nest, prefix, into):
+        for k, v in nest.items():
+            if sep in k:
+                raise ValueError(f"separator '{sep}' not allowed to be in key '{k}'")
+            if isinstance(v, dict):  # collections.Mapping fails in py3.10.
+                rec(v, prefix + k + sep, into)
+            else:
+                v = postprocess_fn(v)
+                into[prefix + k] = v
+
+    flat = {}
+    rec(nested, "", flat)
+    return flat
+
+
 def unpack_dict(d: Dict, keys: Sequence[str], return_type: type = tuple) -> Union[Sequence, Dict]:
     if return_type in (tuple, list):
         return return_type(d[key] for key in keys)
@@ -218,7 +234,7 @@ def unpack_dict(d: Dict, keys: Sequence[str], return_type: type = tuple) -> Unio
         raise ValueError(f"Unknown return_type: {return_type}")
 
 
-def merge_dicts(dicts: Sequence[dict], merge_fn: Callable = lambda *args: args) -> dict:
+def merge_dict(dicts: Sequence[dict], merge_fn: Callable = lambda *args: args) -> dict:
     """Merge a sequence of dicts (with the same set of keys) into a single dict."""
     if len(dicts) == 0:
         return dict()
@@ -371,3 +387,20 @@ def cast_with_native_amp(func: Callable, mixed_precision: Optional[str] = None) 
         output_func = torch.autocast(device_type=device_type, dtype=torch.bfloat16)(func)
     output_func = convert_outputs_to_fp32(output_func)
     return output_func
+
+
+def prepare_model_for_custom_fn(model: nn.Module, fn_name: str, accelerator: Accelerator) -> nn.Module:
+    """Wrap a custom function of a model with the right mixed precision context.
+
+    This function should be run a *raw* model, i.e., before wrapped into DDP or FSDP.
+    """
+    if accelerator.native_amp:
+        # Store original function.
+        original_fn_name = f"_original_{fn_name}"
+        original_fn = getattr(model, fn_name)
+        setattr(model, original_fn_name, original_fn)
+
+        # New set function.
+        wrapped_fn = cast_with_native_amp(original_fn, mixed_precision=accelerator.mixed_precision)
+        setattr(model, fn_name, wrapped_fn)
+    return model

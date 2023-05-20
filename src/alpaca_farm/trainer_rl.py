@@ -8,13 +8,12 @@ import tqdm
 import transformers
 from accelerate import DistributedType
 from accelerate.optimizer import AcceleratedOptimizer
-from ml_swissknife import utils
 from torch import nn
 from torch.distributed.fsdp import ShardingStrategy
 from torch.utils.data import DataLoader, TensorDataset
 from transformers.trainer_utils import enable_full_determinism, set_seed
 
-from . import accelerate_patch, common, data_preprocessor, logging, rl_utils
+from . import accelerate_patch, common, data_preprocessor, logging, rl_utils, utils
 from .inference import decode, score
 from .types import LRScheduler, Tensor
 
@@ -131,7 +130,7 @@ class RLTrainer(object):
                         stats_list.append(stats_for_this_step)
                     self.optimizer.step()
                     self.policy.zero_grad(set_to_none=True)
-        return common.merge_dicts(stats_list, torch.stack)  # list of dict -> dict: str -> 1-D tensor
+        return common.merge_dict(stats_list, torch.stack)  # list of dict -> dict: str -> 1-D tensor
 
     def step(self, train_dataloader, step_idx: int):
         queries_batches = [next(train_dataloader) for _ in range(self.args.rollout_accumulation_steps)]
