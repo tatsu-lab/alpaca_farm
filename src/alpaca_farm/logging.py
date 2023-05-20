@@ -47,7 +47,7 @@ def get_logger(name: str, log_level: str = None):
     Example:
 
     ```python
-    >>> from logging import get_logger
+    >>> from alpaca_farm.logging import get_logger
 
     >>> logger = get_logger(__name__)
 

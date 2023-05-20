@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import os
 import pathlib
 from dataclasses import dataclass, field
@@ -8,9 +7,9 @@ from typing import Literal, Tuple
 import transformers
 from transformers import Trainer
 
-from alpaca_farm import common, constants, data_preprocessor, utils
+from alpaca_farm import common, constants, data_preprocessor, logging, utils
 
-logger = logging.getLogger(__name__)
+logger = logging.get_logger(__name__)
 
 
 @dataclass
@@ -56,16 +55,6 @@ class TrainingArguments(transformers.TrainingArguments):
     )
     resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
 
-    def __post_init__(self):
-        super(TrainingArguments, self).__post_init__()
-
-        if self.optim == "adamw_apex_fused":
-            if common.apex_is_installed():
-                logger.warning("apex is installed. Using apex FusedAdam.")
-            else:
-                logger.warning("apex is not installed. Reverting to native non-fused Adam.")
-                self.optim = "adamw_torch"
-
 
 def sft():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
@@ -99,7 +88,6 @@ def sft():
         cache_dir=training_args.tokenizer_cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side="right",  # Ensures properly masking out the source tokens.
-        use_fast=False,  # Fast GPT2 tokenizer breaks when we start counting the truncations.
     )
     tokenizer.padding = training_args.padding
 
@@ -130,13 +118,11 @@ def sft():
     )
 
     trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
-    if training_args.should_save:
-        logger.warning("hooray! training finished successfully! now on to model saving.")
+    logger.warning("hooray! training finished successfully! now on to model saving.", main_process_only=True)
 
     trainer.save_state()
     common.safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
-    if training_args.should_save:
-        logger.warning("hooray again! model saving worked.")
+    logger.warning("hooray again! model saving worked.", main_process_only=True)
 
 
 if __name__ == "__main__":
