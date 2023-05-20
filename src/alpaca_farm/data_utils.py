@@ -1,4 +1,5 @@
 import datasets
+import pandas as pd
 import transformers
 
 from . import utils
@@ -7,7 +8,6 @@ from .data_preprocessor import (
     DataCollatorForBinaryRewardModelingDataset,
     DataCollatorForSFTDataset,
     SFTDataset,
-    format_prompt,
     split_train_into_train_and_eval,
 )
 
@@ -20,25 +20,18 @@ def make_supervised_data_module(
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
     alpaca_instructions = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
-    alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict, return_dict=True))
-
-    # support for multiple splits
-    train_prompts = utils.flatten_nested_pystruct(
-        [alpaca_instructions[split]["prompt"] for split in data_args.train_splits]
-    )
-    train_outputs = utils.flatten_nested_pystruct(
-        [alpaca_instructions[split]["output"] for split in data_args.train_splits]
-    )
+    train_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.train_splits])
+    eval_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.eval_splits])
 
     train_dataset = SFTDataset(
+        df=train_df,
+        prompt_dict=prompt_dict,
         tokenizer=tokenizer,
-        prompts=train_prompts,
-        targets=train_outputs,
     )
     eval_dataset = SFTDataset(
+        df=eval_df,
+        prompt_dict=prompt_dict,
         tokenizer=tokenizer,
-        prompts=alpaca_instructions["val"]["prompt"],
-        targets=alpaca_instructions["val"]["output"],
     )
 
     data_collator = DataCollatorForSFTDataset(tokenizer=tokenizer)
@@ -51,9 +44,12 @@ def make_binary_reward_modeling_data_module(
     training_args,
 ):
     prompt_dict = utils.jload(data_args.prompt_dict_path)
+
     alpaca_human_preference = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
+    train_df = pd.DataFrame(alpaca_human_preference["preference"])
+
     train_dataset = BinaryRewardModelingDataset(
-        huggingface_dataset=alpaca_human_preference["preference"],
+        df=train_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
         df_postprocessor=data_args.train_df_postprocessor,

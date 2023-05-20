@@ -4,6 +4,7 @@ from typing import Dict, Optional, Sequence, Union
 
 import datasets
 import fire
+import pandas as pd
 
 from alpaca_farm import data_preprocessor, utils
 from alpaca_farm.inference import decode, score
@@ -40,8 +41,8 @@ def run_decode(
     """
     dataset = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_instructions")
 
-    prompts, list_dict_data, metadata = data_preprocessor.format_prompt_with_huggingface_dataset(
-        huggingface_dataset=dataset[split],
+    prompts, list_dict_data, metadata = data_preprocessor.format_prompt_with_data_frame(
+        df=pd.DataFrame(dataset[split]),
         prompt_dict=utils.jload(prompt_dict_path),
     )
     prompts, list_dict_data = prompts[:max_instances], list_dict_data[:max_instances]

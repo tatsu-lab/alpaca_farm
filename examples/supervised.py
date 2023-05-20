@@ -24,6 +24,7 @@ class DataArguments:
     dataset_path: str = field(default="tatsu-lab/alpaca_farm")
     dataset_name: str = field(default="alpaca_instructions")
     train_splits: List[str] = field(default_factory=lambda: ["sft"])
+    eval_splits: List[str] = field(default_factory=lambda: ["val"])
     prompt_dict_path: str = field(
         default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
