@@ -1,0 +1,38 @@
+[
+  {
+    "instruction":"The sentence you are given might be too wordy, complicated, or unclear. Rewrite the sentence and make your writing clearer by keeping it concise. Whenever possible, break complex sentences into multiple sentences and eliminate unnecessary words.",
+    "input":"If you have any questions about my rate or if you find it necessary to increase or decrease the scope for this project, please let me know.",
+    "output_1":"If you have questions about my rate or need to modify the scope of this project, please let me know.",
+    "output_2":"Let me know if you have questions about my rate or need to adjust the project scope."
+  },
+  {
+    "instruction":"Analyze the word choice, phrasing, punctuation, and capitalization in the given email. How may the writer of this email sound to the reader? These tones include Disheartening, Accusatory, Worried, Curious, Surprised, Disapproving, Unassuming, Formal, Assertive, Confident, Appreciative, Concerned, Sad, Informal, Regretful, Encouraging, Egocentric, Joyful, Optimistic, and Excited.",
+    "input":"Hi Jen, \nI hope you're well. Can we catch up today? I'd appreciate your input on my presentation for tomorrow's meeting. I'd especially love it if you could double-check the sales numbers with me. There's a coffee in it for you!",
+    "output_1":"The writer of this email likely sounds Appreciative, Encouraging, and Optimistic.",
+    "output_2":"The writer of this email sounds Concerned and Curious. They display a Regretful tone with the mention of a \"coffee in it\", which implies that the writer is offering a reward in exchange for the other person's help. They are also displaying a collaborative spirit by asking for the other person's input and asking for their help with the sales numbers. Overall, the writer seems to be hoping for the best outcome, while still showing some hesitation and worry."
+  },
+  {
+    "instruction":"Rewrite the given text and correct grammar, spelling, and punctuation errors.",
+    "input":"If you'd told me year ago that today I would finish a marathon, I would of laughed. Your support had a huge affect on me!",
+    "output_1":"If you had told me a year ago that today I would finish a marathon, I would have laughed. Your support had a huge effect on me!",
+    "output_2":"If you had told me a year ago that today I would finish a marathon, I would have laughed. Your support had a huge affect on me!"
+  },
+  {
+    "instruction":"You are given a paper citation, convert it to the requested citation style.",
+    "input":"Chicago: Vaswani, Ashish, Shazeer, Noam, Parmar, Niki, Uszkoreit, Jakob, Jones, Llion, Gomez, Aidan N., Kaiser, Lukasz, and Illia Polosukhin. \"Attention Is All You Need.\" arXiv, (2017). https:\/\/doi.org\/10.48550\/arXiv.1706.03762.\nMLA:",
+    "output_1":"Vaswani, Ashish, et al. \"Attention Is All You Need.\" arXiv, 2017. https:\/\/doi.org\/10.48550\/arXiv.1706.03762.",
+    "output_2":"Vaswani, Ashish, Shazeer, Noam, Parmar, Niki, Uszkoreit, Jakob, Jones, Llion, Gomez, Aidan N., Kaiser, Lukasz, and Illia Polosukhin. \"Attention Is All You Need.\" arXiv, (2017). https:\/\/doi.org\/10.48550\/arXiv.1706.03762."
+  },
+  {
+    "instruction":"Desk jobs require writing a lot of emails, so it isn't surprising we get tired of repeating ourselves. Come up with several synonyms for the given word.",
+    "input":"Sincerely",
+    "output_1":"Regards, Respectfully, Cordially, Best Wishes, Kindest Regards",
+    "output_2":"Dearly, Affectionately, Truly, Cordially, Respectfully, Faithfully, Sincerely."
+  },
+  {
+    "instruction":"If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.",
+    "input":"",
+    "output_1":"Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
+    "output_2":"Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]"
+  }
+]
