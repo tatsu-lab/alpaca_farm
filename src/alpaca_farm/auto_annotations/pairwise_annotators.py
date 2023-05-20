@@ -246,12 +246,19 @@ class PairwiseAutoAnnotator:
 
     def _preprocess(self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame]) -> pd.DataFrame:
         """Preprocess the examples to annotate. In particular takes care of filtering unnecessary examples."""
+
         if not isinstance(to_annotate, pd.DataFrame):
             df_to_annotate = pd.DataFrame.from_records(to_annotate)
         else:
             df_to_annotate = to_annotate.copy()
 
-        df_to_annotate["preference"] = np.nan
+        if "preference" in df_to_annotate.columns and not df_to_annotate["preference"].isna().all():
+            logging.warning(
+                """Preference column is already in the dataframe and has non NaN values. We will only
+            add annotations to missing preferences."""
+            )
+        else:
+            df_to_annotate["preference"] = np.nan
 
         # remove duplicates because you only need to annotate one of them
         df_to_annotate = df_to_annotate.drop_duplicates(subset=self.input_output_keys)
@@ -304,10 +311,13 @@ class PairwiseAutoAnnotator:
             lambda x: ann_utils.random_seeded_choice(
                 # we add "annotator" at the beginning to not use the same seed for all tasks
                 seed="annotator" + x["instruction"] + x["input"],
-                choices=self.annotators.keys(),
+                choices=list(self.annotators.keys()),
             ),
             axis=1,
         )
+        import pdb
+
+        pdb.set_trace()
 
         df_annotated = df_to_annotate
         for annotator in self.annotators.keys():
@@ -337,6 +347,9 @@ class PairwiseAutoAnnotator:
 
     def _merge_annotations(self, df_to_annotate: pd.DataFrame, df_partially_annotated: pd.DataFrame) -> pd.DataFrame:
         """Merge (partial) annotations with the original df to keep the same order and avoid duplicates annotations."""
+        if df_partially_annotated is None or df_partially_annotated.empty:
+            return df_to_annotate
+
         df_to_annotate = df_to_annotate.merge(
             df_partially_annotated[self.all_keys + ["preference"]],
             on=self.all_keys,
@@ -348,7 +361,8 @@ class PairwiseAutoAnnotator:
         return df_to_annotate
 
     def _postprocess(self, df_annotated: pd.DataFrame) -> list[dict[str, Any]]:
-        """Return all the annotations including those that were already annotated."""
+        """Return all the available annotations as a list of dict."""
+        df_annotated = df_annotated[~df_annotated["preference"].isna()]
         annotated = df_annotated.to_dict(orient="records")
         return annotated
 
@@ -427,9 +441,6 @@ class SinglePairwiseAutoAnnotator:
         prompts, df_to_annotate = self.make_prompts(df_to_annotate=df_to_annotate)
 
         completions = self.fn_decoder(prompts=prompts, **self.decoder_kwargs)
-        import pdb
-
-        pdb.set_trace()
 
         df_to_annotate["preference"] = self.parse_completions(completions=completions)
 
