@@ -10,8 +10,8 @@ gpt4_1 : # gpt-4-0314_pairwise_v1_b4_chatml-chat_CoT_JSON_temp=1.0 in old code
     max_tokens: 600
     temperature: 1.0
   outputs_to_match:
-    1: ' true'
-    2: ' false'
+    1: ': true'
+    2: ': false'
   batch_size: 4
 
 gpt4_2 : # gpt-4-0314_pairwise_diverse-diana_v0_b5_chatml-prompt_short_temp=1.0
@@ -24,8 +24,8 @@ gpt4_2 : # gpt-4-0314_pairwise_diverse-diana_v0_b5_chatml-prompt_short_temp=1.0
     max_tokens: 250
     temperature: 1.0
   outputs_to_match:
-    1: 'Output \(a'
-    2: 'Output \(b'
+    1: '(?<=^|\n)Output \(a\)'
+    2: '(?<=^|\n)Output \(a\)'
   batch_size: 5
 
 gpt4_3 : # gpt-4-0314_pairwise_vH_b5_chatml-prompt_short_temp=1.0
@@ -38,8 +38,8 @@ gpt4_3 : # gpt-4-0314_pairwise_vH_b5_chatml-prompt_short_temp=1.0
     max_tokens: 250
     temperature: 1.0
   outputs_to_match:
-    1: ' Output \(a'
-    2: ' Output \(b'
+    1: '(?<=^|\n)Output \(a\)'
+    2: '(?<=^|\n)Output \(a\)'
   batch_size: 5
 
 gpt4_4 : # gpt-4-0314_pairwise_v2_b1_chatml-chat_reasoning_temp=1.0
@@ -69,8 +69,8 @@ gpt4_5 : # gpt-4-0314_pairwise_diverse-joeX_v0_b5_chatml-prompt_short_temp=1.0
     max_tokens: 250
     temperature: 1.0
   outputs_to_match:
-    1: 'Output \(a'
-    2: 'Output \(b'
+    1: '(?<=^|\n)Output \(a\)'
+    2: '(?<=^|\n)Output \(a\)'
   batch_size: 5
 
 chatgpt_1 : # gpt-3.5-turbo_pairwise_vH_b1_chatml-prompt_short_temp=1.0
@@ -99,9 +99,9 @@ chatgpt_2 : # gpt-3.5-turbo-0301_pairwise_v1_b1_chatml-chat_CoT_JSON_temp=1.0
     max_tokens: 150
     temperature: 1.0
     tokens_to_avoid: ['Both', 'Neither', 'None', ' Both', ' Neither', 'Either', 'depends', 'context','It', 'both','Sorry']
-  outputs_to_match:
-    1: ' true'
-    2: ' false'
+  outputs_to_match: # to test
+    1: ': true'
+    2: ': false'
   batch_size: 1
 
 chatgpt_3 : # gpt-3.5-turbo_pairwise_v2_b1_chatml-chat_reasoning_temp=1.0
