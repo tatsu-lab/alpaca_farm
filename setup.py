@@ -35,8 +35,9 @@ setuptools.setup(
     ],
     extras_require={
         "full": [
-            "flash-attn"
-            # The following are needed to plot the parse analysis of the generated instructions.
+            # Efficiency.
+            "flash-attn" "apex",
+            # Plotting and visualization.
             "benepar",
             "spacy",
             "spacy_fastlang",
