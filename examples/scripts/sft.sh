@@ -1,7 +1,9 @@
 output_dir=$1
 run_name=$2
+model_name_or_path=$3
 
 torchrun --nproc_per_node=8 --master_port=1234 examples/supervised.py \
+  --model_name_or_path "${model_name_or_path}" \
   --fp16 False \
   --bf16 True \
   --seed 42 \
