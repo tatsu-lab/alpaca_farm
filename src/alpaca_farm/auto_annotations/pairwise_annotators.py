@@ -15,7 +15,6 @@ from . import decoders, utils as ann_utils
 
 
 CURRENT_DIR = Path(__file__).parent
-DUMMY_EXAMPLE = dict(instruction="1+1=", output_1="2", input="", output_2="3")
 
 
 class PairwiseAutoAnnotator:
@@ -358,7 +357,9 @@ class SinglePairwiseAutoAnnotator:
         seed: Optional[int] = None,
         batch_size: int = 1,
     ):
-        self.prompt_templates = {k: ann_utils.read_or_return(prompt) for k, prompt in prompt_templates.items()}
+        self.prompt_templates = {
+            k: ann_utils.read_or_return(CURRENT_DIR / prompt) for k, prompt in prompt_templates.items()
+        }
         self.outputs_to_match = {k: re.compile(v) for k, v in outputs_to_match.items()}
         self.is_randomize_output_order = is_randomize_output_order
         self.fn_decoder = getattr(decoders, fn_decoder, fn_decoder)
@@ -401,6 +402,7 @@ class SinglePairwiseAutoAnnotator:
             # randomize order of output_1, output_2 base on inputs
             df_to_annotate["is_switched_outputs"] = df_to_annotate.apply(
                 lambda x: ann_utils.random_seeded_choice(seed=x["instruction"] + x["input"], choices=[False, True]),
+                axis=1,
             )
             df_to_annotate = ann_utils.shuffle_pairwise_preferences(
                 df_to_annotate, df_to_annotate["is_switched_outputs"]
@@ -431,51 +433,15 @@ class SinglePairwiseAutoAnnotator:
         df_with_inputs = df_to_annotate[arr_is_inputs]
         df_without_inputs = df_to_annotate[~arr_is_inputs]
 
-        prompts, df = self._make_prompts_helper(df_without_inputs, self.prompt_templates["prompt_without_inputs"])
+        prompts, df = ann_utils.make_prompts(
+            df_without_inputs, self.prompt_templates["without_inputs"], batch_size=self.batch_size
+        )
         if arr_is_inputs.any():
-            prompts_i, df_i = self._make_prompts_helper(df_with_inputs, self.prompt_templates["prompt_with_inputs"])
+            prompts_i, df_i = ann_utils.make_prompts(
+                df_with_inputs, self.prompt_templates["with_inputs"], batch_size=self.batch_size
+            )
             prompts += prompts_i
             df = pd.concat([df, df_i], axis=0, ignore_index=True)
-
-        return prompts, df
-
-    def _make_prompts_helper(self, df: pd.DataFrame, template: str) -> tuple[list[str], pd.DataFrame]:
-        """Helper function to make prompts for a single template.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            Examples to annotate
-
-        template : str
-            Template for the prompt. Should have batch_size number of placeholder {key} where key is a column in df.
-        """
-
-        if df.empty:
-            return [], df
-
-        text_to_format = re.findall("{(.+?)}", template)
-        n_occurrences = Counter(text_to_format)
-
-        if not all([n == self.batch_size for n in n_occurrences.values()]):
-            raise ValueError(
-                f"All placeholders should be repeated batch_size={self.batch_size} times but {n_occurrences}."
-            )
-
-        # padding if you don't have enough examples
-        n_to_pad = self.batch_size - len(df) % self.batch_size
-        padding = pd.DataFrame([DUMMY_EXAMPLE] * n_to_pad)
-        df = pd.concat([df, padding], axis=0, ignore_index=True)
-
-        prompts = []
-        # ugly for loops, not trivial to vectorize because of the batching
-        for i in range(0, len(df), self.batch_size):
-            current_prompt = copy.deepcopy(template)
-            for j in range(self.batch_size):
-                for to_format in n_occurrences.keys():
-                    # cannot use format because it will replace all occurrences
-                    current_prompt = current_prompt.replace("{" + to_format + "}", df.iloc[i + j][to_format], 1)
-            prompts.append(current_prompt)
 
         return prompts, df
 

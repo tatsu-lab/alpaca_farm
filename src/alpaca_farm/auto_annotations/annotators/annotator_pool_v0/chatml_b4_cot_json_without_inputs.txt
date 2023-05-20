@@ -17,10 +17,10 @@ An ophthalmologist is a medical doctor who pokes and prods at your eyes while as
 ### Preferred output in JSON format for example 1:
 <|im_end|>
 <|im_start|>assistant
-{{
+{
 "Concise explanation": "Output (a) provides a comprehensive and accurate description of the job of an ophthalmologist, including their specialties and duties. In contrast, output (b) is more of a joke.",
 "Output (a) is better than Output (b)": true
-}}
+}
 <|im_end|>
 <|im_start|>user
 Good job! Now I will give you two examples in a row, and you should choose the best outputs for both of them. Note that the correct answer for one has no impact on the other.
@@ -49,16 +49,16 @@ and am planning on going surfing tomorrow morning.
 <|im_end|>
 <|im_start|>assistant
 ### Preferred output in JSON format for example 2:
-{{
+{
 "Concise explanation": "Output (b) paraphrases the question as asked by the instruction. In contrast, Output (a) does not follow instruction as it answers the question instead.",
 "Output (a) is better than Output (b)": false
-}}
+}
 
 ### Preferred output in JSON format for example 3:
-{{
+{
 "Concise explanation": "Neither output is correct. Output (a) tries to follow more closely the instruction as it changes the first verb of the sentence.",
 "Output (a) is better than Output (b)": true
-}}
+}
 <|im_end|>
 <|im_start|>user
 Great! Now I will give you 4 examples in a row.

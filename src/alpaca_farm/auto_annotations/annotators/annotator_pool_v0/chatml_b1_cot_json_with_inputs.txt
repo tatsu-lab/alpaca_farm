@@ -19,10 +19,10 @@ An ophthalmologist is a medical doctor who pokes and prods at your eyes while as
 ### Preferred output in JSON format:
 <|im_end|>
 <|im_start|>assistant
-{{
+{
 "Concise explanation": "Output (a) provides a comprehensive and accurate description of the job of an ophthalmologist, including their specialties and duties. In contrast, output (b) is more of a joke.",
 "Output (a) is better than Output (b)": true
-}}
+}
 <|im_end|>
 <|im_start|>user
 Good job!
@@ -42,10 +42,10 @@ Can you tell me the name of the city that serves as the capital of France?
 ### Preferred output in JSON format:
 <|im_end|>
 <|im_start|>assistant
-{{
+{
 "Concise explanation": "Output (b) paraphrases the question as asked by the instruction. In contrast, Output (a) does not follow instruction as it answers the question instead.",
 "Output (a) is better than Output (b)": false
-}}
+}
 <|im_end|>
 <|im_start|>user
 Great!
@@ -65,10 +65,10 @@ and am planning on going surfing tomorrow morning.
 ### Preferred output in JSON format:
 <|im_end|>
 <|im_start|>assistant
-{{
+{
 "Concise explanation": "Neither output is correct. Output (a) tries to follow more closely the instruction as it changes the first verb of the sentence.",
 "Output (a) is better than Output (b)": true
-}}
+}
 <|im_end|>
 <|im_start|>user
 Good job.
