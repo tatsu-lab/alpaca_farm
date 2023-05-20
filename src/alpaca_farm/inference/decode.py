@@ -129,12 +129,8 @@ def decode_prompts_with_huggingface_given_model(
     local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
 
-    tokenizer = copy.deepcopy(tokenizer)  # Don't tamper with the original tokenizer.
-    tokenizer.padding_side = "left"
-
     model.generate = common.cast_with_native_amp(model.generate, mixed_precision=mixed_precision)
-    if distributed_utils.is_main_process():
-        logger.warning(f"mixed_precision = {mixed_precision}")
+    logger.warning(f"mixed_precision = {mixed_precision}")
 
     generate_kwargs = copy.deepcopy(decoding_args.__dict__)
     generate_kwargs.update(
