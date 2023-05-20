@@ -38,4 +38,7 @@ MODEL_NAME_TO_FAMILY = {
     "llama-13b": "llama",
     "llama-30b": "llama",
     "llama-65b": "llama",
+    "EleutherAI/pythia-2.8b-deduped": "pythia",
+    "EleutherAI/pythia-6.9b-deduped": "pythia",
+    "EleutherAI/pythia-12b-deduped": "pythia",
 }

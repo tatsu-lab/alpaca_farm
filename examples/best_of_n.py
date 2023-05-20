@@ -38,6 +38,7 @@ def run_decode(
 
     Returns:
         List of dict data with keys 'prompt', 'completion', and 'decoder_name_or_path'.
+        If num_return_sequences > 1, each 'completion' is a list of strings. Otherwise, it is a string.
     """
     dataset = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_instructions", use_auth_token=use_auth_token)
 
@@ -82,16 +83,19 @@ def run_rerank(
         per_device_batch_size: Batch size for reranking for each device.
 
     Returns:
-        Rerank results as a list of dict data.
+        Rerank results as a list of dict data with keys 'top_sequence', 'top_index', and 'scorer_name_or_path'.
     """
     if isinstance(list_dict_data_or_path, AnyPath):
         list_dict_data_or_path = utils.jload(list_dict_data_or_path)
 
-    sequences = [dict_data["prompt"] + dict_data["completion"] for dict_data in list_dict_data_or_path]
+    sequences = [
+        [dict_data["prompt"] + completion for completion in dict_data["completion"]]
+        for dict_data in list_dict_data_or_path
+    ]
 
     top_sequences, top_indices = score.rerank_sequences_with_huggingface(
         sequences=sequences,
-        scorer_name_or_path=scorer_name_or_path,
+        model_name_or_path=scorer_name_or_path,
         per_device_batch_size=per_device_batch_size,
     )
 
@@ -129,13 +133,12 @@ def run_best_of_n(
         num_return_sequences=num_return_sequences,
         max_new_tokens=max_new_tokens,
     )
-    print(decoder_name_or_path)
     rerank_return_list_dict_data = run_rerank(
         list_dict_data_or_path=decode_return_list_dict_data,
         scorer_name_or_path=scorer_name_or_path,
         per_device_batch_size=per_device_batch_size,
     )
-    print(rerank_return_list_dict_data)
+    return rerank_return_list_dict_data
 
 
 def main(task, **kwargs):

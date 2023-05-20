@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ModelArguments:
-    model_name_or_path: str = field(default=constants.FAST_MODEL_CACHE_DIR / "llama-7b")
+    model_name_or_path: str = field(
+        default=None, metadata={"help": "Name to a huggingface native pretrained model or path to a model on disk."}
+    )
 
 
 @dataclass
