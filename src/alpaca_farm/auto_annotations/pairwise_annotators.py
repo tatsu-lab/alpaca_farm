@@ -94,6 +94,7 @@ class PairwiseAutoAnnotator:
         all_outputs: Union[Sequence[dict[str, Any]], pd.DataFrame],
         keys_to_sample_output_2: Optional[Sequence] = None,
         is_unique_instructions: bool = True,
+        p_label_flip: Optional[float] = None,
     ) -> list[dict[str, Any]]:
         """Sample pairs of outputs from a sequence of examples and annotate them.
 
@@ -110,7 +111,12 @@ class PairwiseAutoAnnotator:
         is_unique_instructions : bool, optional
             Whether to deduplicate the instructions such that there is only one pair per instruction. If False
             there will be as many pairs as there are outputs for each instruction.
+
+        p_label_flip : float, optional
+            Probability of flipping the label (ie adds noise by taking a mixture between predicted label and
+            2*p_label_flip of independent coin flip). If None, will use `self.p_label_flip`.
         """
+
         if not isinstance(all_outputs, pd.DataFrame):
             all_outputs = pd.DataFrame.from_records(all_outputs)
 
@@ -135,7 +141,6 @@ class PairwiseAutoAnnotator:
             )
 
         # sample an output 2 for each output 1 that are different
-        # TODO: make sure that you never have output_1 == output_2
         df_to_annotate["output_2"] = df_to_annotate.groupby(list(keys_to_sample_output_2))["output_1"].transform(
             lambda x: ann_utils.random_derangement(x.values, seed=self.seed)
         )
@@ -144,11 +149,20 @@ class PairwiseAutoAnnotator:
             n_pre_dedup = len(df_to_annotate)
             df_to_annotate = df_to_annotate.drop_duplicates(subset=self.input_keys)
             if len(df_to_annotate) != n_pre_dedup:
-                logging.info(
-                    f"Filtered rows to have unique instruction/input pairs: {n_pre_dedup} -> {len(df_to_annotate)}"
-                )
+                logging.info(f"Filtered unique instruction/input pairs: {n_pre_dedup} -> {len(df_to_annotate)}")
 
-        return self.annotate_pairs(df_to_annotate)
+        if p_label_flip is not None:
+            old_p_label_flip = self.p_label_flip
+            self.set_noise(p_label_flip)
+
+        try:
+            annotated = self.annotate_pairs(df_to_annotate)
+        finally:
+            # reset even if there is an error
+            if p_label_flip is not None:
+                self.set_noise(old_p_label_flip)
+
+        return annotated
 
     def annotate_head2head(
         self,
@@ -242,8 +256,7 @@ class PairwiseAutoAnnotator:
 
         df_to_annotate = self._preprocess(to_annotate)
         df_annotated = self._annotate(df_to_annotate)
-        self._store_annotations_(df_annotated)
-        annotated = self._postprocess(df_annotated)
+        annotated = self._postprocess_and_store_(df_annotated)
         return annotated
 
     def set_noise(self, p_label_flip: float):
@@ -287,23 +300,28 @@ class PairwiseAutoAnnotator:
             # merge the old annotations
             df_to_annotate = self._merge_annotations(df_to_annotate, self.df_annotations)
 
-        idcs_is_same_outputs = df_to_annotate["output_1"] == df_to_annotate["output_2"]
-        df_to_annotate.loc[idcs_is_same_outputs, "preference"] = 0
-
         # adds random noise => avoids annotating examples that will be noised out.
         if self.p_label_flip:
-            idcs_no_pref = df_to_annotate["preference"].isna()
+            logging.info(f"Adding random noise to the labels p_label_flip={self.p_label_flip}.")
             # if you have 25% change of flipping the label, you have 50% chance of selecting random label
             p_noise = self.p_label_flip * 2
-            df_to_annotate.loc[idcs_no_pref, "preference"] = df_to_annotate.loc[idcs_no_pref].apply(
+            noisy_preference = df_to_annotate.apply(
                 # we add "noisy_label" at the beginning to use ~independent seeds between tasks
                 lambda x: ann_utils.random_seeded_choice(  # seed on inputs for reproducibility
-                    seed="noisy_label" + x["instruction"] + x["input"],
+                    seed="noisy_preference" + x["instruction"] + x["input"],
                     choices=[np.nan, 1, 2],
                     p=[1 - p_noise, self.p_label_flip, self.p_label_flip],
                 ),
                 axis=1,
             )
+            df_to_annotate["is_noisy_label"] = ~noisy_preference.isna()
+            # keeps previously annotated examples when you did not add noise
+            df_to_annotate["preference"] = np.where(
+                df_to_annotate["is_noisy_label"], noisy_preference, df_to_annotate["preference"]
+            )
+
+        idcs_is_same_outputs = df_to_annotate["output_1"] == df_to_annotate["output_2"]
+        df_to_annotate.loc[idcs_is_same_outputs, "preference"] = 0
 
         return df_to_annotate
 
@@ -340,16 +358,31 @@ class PairwiseAutoAnnotator:
 
         return df_annotated
 
-    def _store_annotations_(self, df_annotated: pd.DataFrame):
-        """Store all the annotations in memory and potentially to json."""
+    def _postprocess_and_store_(self, df_annotated: pd.DataFrame) -> list[dict[str, Any]]:
+        """Convert the dataframe into a list of dictionaries to be returned, and store current anntations."""
+
+        # select available annotations
+        df_annotated = df_annotated[~df_annotated["preference"].isna()]
+
+        if "is_noisy_label" in df_annotated.columns:
+            # dont' store noisy labels
+            df_annotated_to_store = df_annotated.query("is_noisy_label == False").drop(columns=["is_noisy_label"])
+            df_annotated = df_annotated.drop(columns=["is_noisy_label"])
+        else:
+            df_annotated_to_store = df_annotated
+
         if self.df_annotations is None:
-            self.df_annotations = df_annotated
+            self.df_annotations = df_annotated_to_store
         else:
             self.df_annotations = pd.concat(
-                [self.df_annotations, df_annotated], axis=0, ignore_index=True
+                [self.df_annotations, df_annotated_to_store], axis=0, ignore_index=True
             ).drop_duplicates(subset=self.all_keys)
 
         self.save()
+
+        annotated = df_annotated.to_dict(orient="records")
+
+        return annotated
 
     def save(self, path: Optional[types.AnyPath] = None):
         """Save the annotations to json."""
@@ -381,12 +414,6 @@ class PairwiseAutoAnnotator:
         df_to_annotate["preference"] = df_to_annotate["preference_old"].fillna(df_to_annotate["preference_new"])
         df_to_annotate = df_to_annotate.drop(columns=["preference_old", "preference_new"])
         return df_to_annotate
-
-    def _postprocess(self, df_annotated: pd.DataFrame) -> list[dict[str, Any]]:
-        """Return all the available annotations as a list of dict."""
-        df_annotated = df_annotated[~df_annotated["preference"].isna()]
-        annotated = df_annotated.to_dict(orient="records")
-        return annotated
 
 
 class SinglePairwiseAutoAnnotator:
