@@ -308,6 +308,7 @@ class PairwiseAutoAnnotator:
             ),
             axis=1,
         )
+
         df_annotated = df_to_annotate
         for annotator in self.annotators.keys():
             # only annotate examples that have not been annotated yet
