@@ -2,7 +2,7 @@ import contextlib
 import os
 import pathlib
 from dataclasses import dataclass, field
-from typing import Literal, Tuple
+from typing import List, Literal
 
 import transformers
 from transformers import Trainer
@@ -23,10 +23,7 @@ class ModelArguments:
 class DataArguments:
     dataset_path: str = field(default="tatsu-lab/alpaca_farm")
     dataset_name: str = field(default="alpaca_instructions")
-    train_splits: Tuple[str] = field(
-        default=("sft",),
-        metadata={"help": "Splits to use for training."},
-    )
+    train_splits: List[str] = field(default_factory=lambda: ["sft"])
     prompt_dict_path: str = field(
         default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
         metadata={"help": "Path to the dictionary for the prompt to format examples."},

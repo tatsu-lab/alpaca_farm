@@ -29,4 +29,5 @@ torchrun --nproc_per_node=8 --master_port=1234 examples/supervised.py \
   --model_max_length 512 \
   --ddp_timeout 1800 \
   --fsdp "full_shard auto_wrap" \
-  --fsdp_transformer_layer_cls_to_wrap "LlamaDecoderLayer"
+  --fsdp_transformer_layer_cls_to_wrap "LlamaDecoderLayer" \
+  --train_splits "sft"
