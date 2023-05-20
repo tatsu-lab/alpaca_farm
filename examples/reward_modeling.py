@@ -6,9 +6,11 @@ from typing import List, Literal
 
 import transformers
 
-from alpaca_farm import common, constants, data_postprocessor, data_preprocessor, trainer_reward_modeling
+from alpaca_farm import common, constants, data_postprocessor, data_utils, logging, trainer_reward_modeling
 from alpaca_farm.auto_feedback import convert
 from alpaca_farm.models import reward_model
+
+logger = logging.get_logger(__name__)
 
 
 @dataclass
@@ -22,7 +24,7 @@ class ModelArguments:
 @dataclass
 class DataArguments:
     dataset_path: str = field(default="tatsu-lab/alpaca_farm")
-    dataset_name: Literal["alpaca_human_preference", "alpaca_gpt4_preference"] = field(
+    dataset_name: Literal["alpaca_human_preference", "alpaca_gpt4_preference", "alpaca_noisy_multi_preference"] = field(
         default="alpaca_human_preference",
         metadata={"help": "Name of the dataset. Fetches the human or GPT-4 preference data."},
     )
@@ -99,6 +101,7 @@ class TrainingArguments(transformers.TrainingArguments):
             "Ending with EOS might help the reward model realize it's time to predict."
         },
     )
+    resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
 
 
 def main():
@@ -136,10 +139,9 @@ def main():
         cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side="left",  # Ensure reward is always extracted at the last token embedding.
-        use_fast=False,  # Fast GPT2 tokenizer can break when we start counting the truncations.
     )
     tokenizer.padding = training_args.padding
-    data_module = data_preprocessor.make_binary_reward_modeling_data_module(
+    data_module = data_utils.make_binary_reward_modeling_data_module(
         tokenizer=tokenizer,
         data_args=data_args,
         training_args=training_args,
@@ -153,10 +155,14 @@ def main():
         **data_module,
     )
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
+    logger.warning("hooray! training finished successfully! now on to model saving.", main_process_only=True)
+
     trainer.evaluate()
+
     trainer.save_state()
     common.safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
+    logger.warning("hooray again! model saving worked.", main_process_only=True)
 
 
 if __name__ == "__main__":

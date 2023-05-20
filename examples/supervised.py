@@ -1,16 +1,15 @@
 import contextlib
-import logging
 import os
 import pathlib
 from dataclasses import dataclass, field
-from typing import Literal, Tuple
+from typing import List, Literal
 
 import transformers
 from transformers import Trainer
 
-from alpaca_farm import common, constants, data_preprocessor, utils
+from alpaca_farm import common, constants, data_utils, logging, utils
 
-logger = logging.getLogger(__name__)
+logger = logging.get_logger(__name__)
 
 
 @dataclass
@@ -22,10 +21,10 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
-    train_splits: Tuple[str] = field(
-        default=("sft",),
-        metadata={"help": "Splits to use for training."},
-    )
+    dataset_path: str = field(default="tatsu-lab/alpaca_farm")
+    dataset_name: str = field(default="alpaca_instructions")
+    train_splits: List[str] = field(default_factory=lambda: ["sft"])
+    eval_splits: List[str] = field(default_factory=lambda: ["val"])
     prompt_dict_path: str = field(
         default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
@@ -35,8 +34,7 @@ class DataArguments:
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     pad_token: str = field(default=constants.DEFAULT_PAD_TOKEN)
-    model_cache_dir: str = field(default=constants.FAST_MODEL_CACHE_DIR)
-    tokenizer_cache_dir: str = field(default=constants.DEFAULT_CACHE_DIR)
+    cache_dir: str = field(default=constants.DEFAULT_CACHE_DIR)
     wandb_project: str = field(default=constants.WANDB_PROJECT)
     flash_attn: bool = field(default=True, metadata={"help": "Whether to use flash attention."})
     optim: str = field(default="adamw_torch")
@@ -54,20 +52,17 @@ class TrainingArguments(transformers.TrainingArguments):
             "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
         },
     )
+    initialize_model_on_cpu: bool = field(
+        default=False,
+        metadata={
+            "help": "Whether to initialize the model on CPU. "
+            "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
+        },
+    )
     resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
 
-    def __post_init__(self):
-        super(TrainingArguments, self).__post_init__()
 
-        if self.optim == "adamw_apex_fused":
-            if common.apex_is_installed():
-                logger.warning("apex is installed. Using apex FusedAdam.")
-            else:
-                logger.warning("apex is not installed. Reverting to native non-fused Adam.")
-                self.optim = "adamw_torch"
-
-
-def sft():
+def main():
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     os.environ["WANDB_PROJECT"] = training_args.wandb_project
@@ -76,6 +71,10 @@ def sft():
         ctx_mgr = contextlib.nullcontext()
         device_map = None
         low_cpu_mem_usage = None
+    elif training_args.initialize_model_on_cpu:
+        ctx_mgr = contextlib.nullcontext()
+        device_map = None
+        low_cpu_mem_usage = True
     else:
         ctx_mgr = common.staggered_object_creation(local_rank=training_args.local_rank)
         device_map = {"": training_args.device.index}
@@ -88,7 +87,7 @@ def sft():
             fp16=training_args.fp16,
             bf16=training_args.bf16,
             config=transformers.AutoConfig.from_pretrained(model_args.model_name_or_path),
-            cache_dir=training_args.model_cache_dir,
+            cache_dir=training_args.cache_dir,
             low_cpu_mem_usage=low_cpu_mem_usage,
             device_map=device_map,
         )
@@ -96,10 +95,9 @@ def sft():
 
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
-        cache_dir=training_args.tokenizer_cache_dir,
+        cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side="right",  # Ensures properly masking out the source tokens.
-        use_fast=False,  # Fast GPT2 tokenizer breaks when we start counting the truncations.
     )
     tokenizer.padding = training_args.padding
 
@@ -115,7 +113,7 @@ def sft():
         special_tokens_dict["unk_token"] = constants.DEFAULT_UNK_TOKEN
     utils.stable_resize_token_embeddings_and_tokenizer(model, tokenizer, special_tokens_dict)
 
-    data_module: dict = data_preprocessor.make_supervised_data_module(
+    data_module: dict = data_utils.make_supervised_data_module(
         tokenizer=tokenizer,
         data_args=data_args,
         training_args=training_args,
@@ -130,14 +128,12 @@ def sft():
     )
 
     trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
-    if training_args.should_save:
-        logger.warning("hooray! training finished successfully! now on to model saving.")
+    logger.warning("hooray! training finished successfully! now on to model saving.", main_process_only=True)
 
     trainer.save_state()
     common.safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
-    if training_args.should_save:
-        logger.warning("hooray again! model saving worked.")
+    logger.warning("hooray again! model saving worked.", main_process_only=True)
 
 
 if __name__ == "__main__":
-    sft()
+    main()

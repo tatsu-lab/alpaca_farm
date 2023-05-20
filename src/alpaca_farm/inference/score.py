@@ -33,8 +33,7 @@ def score_sequences_with_huggingface_given_model(
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
 
     model.forward = common.cast_with_native_amp(model.forward, mixed_precision=mixed_precision)
-    if distributed_utils.is_main_process():
-        logger.warning(f"mixed_precision = {mixed_precision}")
+    logger.warning(f"mixed_precision = {mixed_precision}")
 
     sequences = sequences[:max_instances]
     ori_data_size = len(sequences)
