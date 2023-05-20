@@ -40,10 +40,10 @@ def format_prompt(example: dict, prompt_dict: dict) -> str:
     return formatted_prompt
 
 
-def format_output(example: dict, eos_token: Optional[str] = None) -> str:
+def format_output(example: dict, eos_token: Optional[str] = None, output_key="output") -> str:
     if eos_token is None:
         eos_token = ""
-    return f"{example['output']}{eos_token}"
+    return f"{example[output_key]}{eos_token}"
 
 
 def _tokenize_fn(strings: Sequence[str], tokenizer: transformers.PreTrainedTokenizer) -> dict:
@@ -161,11 +161,9 @@ def preprocess_for_reward_modeling(
     end_sequence_with_eos: bool = False,
     verbose=True,
 ) -> dict[str, torch.Tensor]:
-    _, list_dict_data, metadata = format_prompt_with_data_frame(
-        df=df,
-        prompt_dict=prompt_dict,
-        df_postprocessor=df_postprocessor,
-    )
+    if df_postprocessor is not None:
+        df = df_postprocessor(df)
+    list_dict_data = df.to_dict(orient="records")
 
     index_0, index_1 = tuple(
         torch.full(size=(len(list_dict_data), 1), fill_value=fill_value, dtype=torch.long) for fill_value in (0, 1)
@@ -179,8 +177,10 @@ def preprocess_for_reward_modeling(
 
     def _get_text(example: dict, output_key: str):
         source = format_prompt(example, prompt_dict=prompt_dict)
-        target = preprocess_output(
-            example[output_key], eos_token=tokenizer.eos_token if end_sequence_with_eos else None
+        target = format_output(
+            example,
+            eos_token=tokenizer.eos_token if end_sequence_with_eos else None,
+            output_key=output_key,
         )
         return source + target
 
