@@ -19,7 +19,7 @@ def make_supervised_data_module(
 ):
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
-    alpaca_instructions = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_instructions")
+    alpaca_instructions = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
     alpaca_instructions = alpaca_instructions.map(lambda row: format_prompt(row, prompt_dict, return_dict=True))
 
     # support for multiple splits

@@ -21,6 +21,8 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
+    dataset_path: str = field(default="tatsu-lab/alpaca_farm")
+    dataset_name: str = field(default="alpaca_instructions")
     train_splits: Tuple[str] = field(
         default=("sft",),
         metadata={"help": "Splits to use for training."},
