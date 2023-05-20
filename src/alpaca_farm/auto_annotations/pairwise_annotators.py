@@ -31,18 +31,19 @@ class PairwiseAutoAnnotator:
 
     Other functions that are useful for annotating:
         - set_noise: set the noise level for the annotators.
+        - load_: load annotations from a file.
+        - save: save annotations to a file.
 
     Parameters
     ----------
-    annotators_config : Path or list of dict
+    annotators_config : Path or list of dict, optional
         A dictionary or path to a yaml file containing the configuration for the pool of annotators. The keys in the
         fist dictionary should be the annotator's name, and the value should be a dictionary of the annotator's
         configuration which should have the following keys:
-        - prompt_templates (dict): a dictionary of prompts or path to the prompts. The dictionary of (loaded) prompts
-            will be given to `fn_prompter`.
-        - fn_decoder (str): function in `decoders.py` to use for decoding the output.
+        - prompt_templates (dict): a dictionary of prompts or path to the prompts.
+        - fn_decoder (str): function in `alpaca_farm.auto_annotations.pairwise_annotators.decoders.py` for completions.
         - decoder_kwargs (dict): kwargs for fn_decode. E.g. model_name, max_completions_tokens
-        - other secondary kwargs to SinglePairwiseAutoAnnotator
+        - other kwargs to `SinglePairwiseAutoAnnotator`
 
     seed : int, optional
         Seed for the random number generator.
@@ -69,7 +70,7 @@ class PairwiseAutoAnnotator:
 
     def __init__(
         self,
-        annotators_config: Union[types.AnyPath, list[dict[str, Any]]],
+        annotators_config: Union[types.AnyPath, list[dict[str, Any]]] = "annotators/annotator_pool_v0/configs.yaml",
         seed: Optional[int] = None,
         is_avoid_reannotations: bool = True,
         saving_path: Optional[types.AnyPath] = None,
@@ -87,7 +88,8 @@ class PairwiseAutoAnnotator:
 
         self.annotators = self._initialize_annotators(annotators_config)
         self.saving_path = saving_path
-        self.df_annotations = self._load_annotations()
+        self.df_annotations = None
+        self.load_()
 
     def annotate_samples(
         self,
@@ -260,6 +262,16 @@ class PairwiseAutoAnnotator:
         # remove duplicates because you only need to annotate one of them
         df_to_annotate = df_to_annotate.drop_duplicates(subset=self.input_output_keys)
 
+        # set the annotater for each example
+        df_to_annotate["annotator"] = df_to_annotate.apply(
+            lambda x: ann_utils.random_seeded_choice(
+                # we add "annotator" at the beginning to not use the same seed for all tasks
+                seed="annotator" + x["instruction"] + x["input"],
+                choices=list(self.annotators.keys()),
+            ),
+            axis=1,
+        )
+
         if self.is_avoid_reannotations:
             # merge the old annotations
             df_to_annotate = self._merge_annotations(df_to_annotate, self.df_annotations)
@@ -303,20 +315,12 @@ class PairwiseAutoAnnotator:
     def _annotate(self, df_to_annotate: pd.DataFrame) -> pd.DataFrame:
         """Annotate the examples."""
 
-        # set the annotater for each example
-        df_to_annotate["annotator"] = df_to_annotate.apply(
-            lambda x: ann_utils.random_seeded_choice(
-                # we add "annotator" at the beginning to not use the same seed for all tasks
-                seed="annotator" + x["instruction"] + x["input"],
-                choices=list(self.annotators.keys()),
-            ),
-            axis=1,
-        )
-
         df_annotated = df_to_annotate
         for annotator in self.annotators.keys():
             # only annotate examples that have not been annotated yet
             curr_idcs = (df_annotated["annotator"] == annotator) & df_annotated["preference"].isna()
+
+            logging.info(f"Annotating {curr_idcs.sum()} examples with {annotator}")
 
             # actual annotation
             curr_annotated = self.annotators[annotator](df_annotated[curr_idcs])
@@ -330,17 +334,27 @@ class PairwiseAutoAnnotator:
         if self.df_annotations is None:
             self.df_annotations = df_annotated
         else:
-            self.df_annotations = pd.concat([self.df_annotations, df_annotated], axis=0, ignore_index=True)
+            self.df_annotations = pd.concat(
+                [self.df_annotations, df_annotated], axis=0, ignore_index=True
+            ).drop_duplicates(subset=self.all_keys)
 
-        if self.saving_path is not None:
-            self.df_annotations.to_json(self.saving_path, orient="records", indent=2)
+        self.save()
 
-    def _load_annotations(self) -> Optional[pd.DataFrame]:
+    def save(self, path: Optional[types.AnyPath] = None):
+        """Save the annotations to json."""
+        path = path or self.saving_path
+        if path is not None:
+            logging.info(f"Saving all annotations to {path}.")
+            self.df_annotations.to_json(path, orient="records", indent=2)
+
+    def load_(self, path: Optional[types.AnyPath] = None):
         """Load all the annotations from json."""
-        df_annotations = None
-        if self.saving_path is not None and self.saving_path.exists():
-            df_annotations = pd.read_json(self.saving_path)
-        return df_annotations
+        path = path or self.saving_path
+        if path is not None:
+            path = Path(path)
+            if path.exists():
+                logging.info(f"Loading all annotations from {path}.")
+                self.df_annotations = pd.read_json(path)
 
     def _merge_annotations(self, df_to_annotate: pd.DataFrame, df_partially_annotated: pd.DataFrame) -> pd.DataFrame:
         """Merge (partial) annotations with the original df to keep the same order and avoid duplicates annotations."""
