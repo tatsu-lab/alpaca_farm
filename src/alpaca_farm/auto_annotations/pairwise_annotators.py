@@ -1,6 +1,4 @@
-import copy
 import logging
-from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -95,8 +93,9 @@ class PairwiseAutoAnnotator:
         self,
         all_outputs: Union[Sequence[dict[str, Any]], pd.DataFrame],
         keys_to_sample_output_2: Optional[Sequence] = None,
+        is_unique_instructions: bool = True,
     ) -> list[dict[str, Any]]:
-        """Sample pairs of outputs from a sequence of examples and anntotate them.
+        """Sample pairs of outputs from a sequence of examples and annotate them.
 
         Parameters
         ----------
@@ -107,6 +106,10 @@ class PairwiseAutoAnnotator:
         keys_to_sample_output_2 : tuple of str, optional
             Keys to use to sample paired `"output_2"` to compare to the current `"output"` which will become
             `"output_1"`. If `None` it uses `self.input_keys`.
+
+        is_unique_instructions : bool, optional
+            Whether to deduplicate the instructions such that there is only one pair per instruction. If False
+            there will be as many pairs as there are outputs for each instruction.
         """
         if not isinstance(all_outputs, pd.DataFrame):
             all_outputs = pd.DataFrame.from_records(all_outputs)
@@ -136,6 +139,14 @@ class PairwiseAutoAnnotator:
         df_to_annotate["output_2"] = df_to_annotate.groupby(list(keys_to_sample_output_2))["output_1"].transform(
             lambda x: ann_utils.random_derangement(x.values, seed=self.seed)
         )
+
+        if is_unique_instructions:
+            n_pre_dedup = len(df_to_annotate)
+            df_to_annotate = df_to_annotate.drop_duplicates(subset=self.input_keys)
+            if len(df_to_annotate) != n_pre_dedup:
+                logging.info(
+                    f"Filtered rows to have unique instruction/input pairs: {n_pre_dedup} -> {len(df_to_annotate)}"
+                )
 
         return self.annotate_pairs(df_to_annotate)
 
