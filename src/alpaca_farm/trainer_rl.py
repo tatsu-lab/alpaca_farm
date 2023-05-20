@@ -201,14 +201,10 @@ class RLTrainer(object):
         FSDP compat: all devices should do the forward pass, since sharded params need to be summoned.
                      only write results in the main process.
         """
-        logger.warning(f"start evaluate at step: {step_idx}", main_process_only=True)
+        logger.warning(f"Start evaluation at step: {step_idx}", main_process_only=True)
 
-        prompts, list_dict_data, metadata = (
-            self.eval_dataset.prompts,
-            self.eval_dataset.list_dict_data,
-            self.eval_dataset.metadata,
-        )
-        if any(item is None for item in (prompts, list_dict_data, metadata)):
+        prompts, list_dict_data = self.eval_dataset.prompts, self.eval_dataset.list_dict_data
+        if any(item is None for item in (prompts, list_dict_data)):
             logger.warning("No evaluation data, skipping evaluation.", main_process_only=True)
             return
 
@@ -216,7 +212,6 @@ class RLTrainer(object):
         model_name = Path(self.args.output_dir).stem  # Don't use the helper in common, as no checkpoint is saved yet.
         model_name_at_step = f"{model_name}_ckpt_{step_idx}"
         temperature = 0.7
-        sample_mode = f"temp={temperature},top_p=1.0,max_new_tokens={self.args.response_len}"
         del model_name
 
         # Start evaluation.
@@ -251,7 +246,7 @@ class RLTrainer(object):
             if self.args.output_dir is not None:
                 utils.jdump(results, utils.join(self.args.output_dir, f"eval_results_{step_idx}.json"))
 
-            logger.warning(f"end evaluate at step: {step_idx}. processed {len(results)} examples")
+            logger.warning(f"End evaluation at step: {step_idx}. Processed {len(results)} examples")
 
     @abc.abstractmethod
     @torch.inference_mode()

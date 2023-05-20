@@ -400,15 +400,16 @@ class QueryResponseDataset(Dataset):
             df = df_postprocessor(df)
         list_dict_data = df.to_dict(orient="records")
 
-        queries = [format_prompt(example=dict_data, prompt_dict=prompt_dict) for dict_data in list_dict_data]
+        # prompts are strings; queries are tensors.
+        prompts = [format_prompt(example=dict_data, prompt_dict=prompt_dict) for dict_data in list_dict_data]
         queries = [
-            tokenizer(query, return_tensors="pt", truncation=False).input_ids.squeeze(dim=0) for query in queries
+            tokenizer(prompt, return_tensors="pt", truncation=False).input_ids.squeeze(dim=0) for prompt in prompts
         ]
 
         filtered_queries = [query for query in queries if len(query) <= query_len]
         logger.warning(
             f"Filtered out {len(queries) - len(filtered_queries)} instances out of {len(queries)} that "
-            f"exceed length limit. These examples are not used for training. "
+            f"exceed length limit. These examples are not used for training, but will still be used in evaluation. "
         )
 
         queries = torch.stack(
@@ -420,6 +421,9 @@ class QueryResponseDataset(Dataset):
 
         self.queries = queries
         self.query_attn_masks = queries.ne(tokenizer.pad_token_id).long()
+
+        # Auxiliary data.
+        self.prompts = prompts
         self.list_dict_data = list_dict_data
 
     def __getitem__(self, i):
