@@ -1,6 +1,7 @@
 from typing import Sequence
 
 import torch
+import torch.nn.functional as F
 
 from .types import Tensor
 
@@ -35,3 +36,8 @@ def pad_sequence_from_left(
     padded_sequence = torch._C._nn.pad_sequence(sequences, batch_first, padding_value)
     padded_sequence = padded_sequence.flip(int(batch_first))
     return padded_sequence
+
+
+def compute_logprobs(logits: Tensor, labels: Tensor, ignore_index: int) -> Tensor:
+    """Compute per-token logprobs, zeroing out places with ignore_index (padding)."""
+    return -F.cross_entropy(logits.permute(0, 2, 1), labels, reduction="none", ignore_index=ignore_index)
