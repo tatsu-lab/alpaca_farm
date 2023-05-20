@@ -218,6 +218,13 @@ def unpack_dict(d: Dict, keys: Sequence[str], return_type: type = tuple) -> Unio
         raise ValueError(f"Unknown return_type: {return_type}")
 
 
+def merge_dicts(dicts: Sequence[dict], merge_fn: Callable = lambda *args: args) -> dict:
+    """Merge a sequence of dicts (with the same set of keys) into a single dict."""
+    if len(dicts) == 0:
+        return dict()
+    return {key: merge_fn([dict_[key] for dict_ in dicts]) for key in dicts[0].keys()}
+
+
 def model_name_or_path_exists(model_name_or_path: AnyPath) -> bool:
     try:
         transformers.PretrainedConfig.get_config_dict(model_name_or_path)
