@@ -13,6 +13,7 @@ from . import decoders, utils as ann_utils
 
 
 CURRENT_DIR = Path(__file__).parent
+logging.getLogger().setLevel(logging.INFO)
 
 
 class PairwiseAutoAnnotator:
@@ -558,7 +559,7 @@ class SinglePairwiseAutoAnnotator:
             batch_preferences = ann_utils.parse_batched_completion(completion, self.outputs_to_match)
             if len(batch_preferences) != self.batch_size:
                 logging.warning(
-                    f"""Found {len(batch_preferences)} preferences in {completion} but expected {self.batch_size}.
+                    f"""Found {len(batch_preferences)} preferences in:\n{completion} but expected {self.batch_size}.
                     We are setting all preferences to np.nan."""
                 )
                 batch_preferences = [np.nan] * self.batch_size

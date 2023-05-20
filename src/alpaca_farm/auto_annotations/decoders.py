@@ -64,7 +64,7 @@ def openai_completions(
         logging.info("No samples to annotate.")
         return []
     else:
-        logging.info(f"Auto annotating {n_examples} samples using {model_name}.")
+        logging.info(f"Auto annotating {n_examples} prompts using {model_name}.")
 
     if tokens_to_avoid or tokens_to_favor:
         tokenizer = tiktoken.encoding_for_model(model_name)
@@ -101,7 +101,7 @@ def openai_completions(
         num_procs = num_procs or 1
         batch_size = batch_size or 10
 
-    logging.info(f"Kwargs to completion: {decoding_args} {decoding_kwargs}")
+    logging.info(f"Kwargs to completion: {decoding_kwargs}")
 
     completions = openai_utils.openai_completion(
         prompts=prompts,
