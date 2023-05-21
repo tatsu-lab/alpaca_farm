@@ -12,7 +12,6 @@ accelerate launch --config_file "${config_file}" examples/rlhf_ppo.py \
   --reward_model_name_or_path "${reward_model_name_or_path}" \
   --policy_model_name_or_path "${policy_model_name_or_path}" \
   --init_value_with_reward True \
-  --bf16 True \
   --rollout_batch_size 512 \
   --step_batch_size 256 \
   --learning_rate 3e-6 \

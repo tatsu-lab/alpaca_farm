@@ -95,43 +95,47 @@ class TrainingArguments(transformers.TrainingArguments):
         if self.tf32:  # super().__post_init__() actually does this.
             torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = True  # noqa
 
-        # Checks on rollout_batch_size only matter for PPO.
-        assert self.rollout_batch_size >= self.rollout_per_device_batch_size, (
-            "`rollout_batch_size` is smaller than `rollout_per_device_batch_size`. "
-            "Increase the former or decrease the latter to fix this."
-        )
-        assert (
-            self.rollout_batch_size % self.rollout_per_device_batch_size == 0
-        ), "`rollout_batch_size` is not a multiple of `rollout_per_device_batch_size`. "
-
-        assert self.step_batch_size >= self.step_per_device_batch_size, (
-            "`step_batch_size` is smaller than `step_per_device_batch_size`. "
-            "Increase the former or decrease the latter to fix this."
-        )
-        assert (
-            self.step_batch_size % self.step_per_device_batch_size == 0
-        ), "`step_batch_size` is not a multiple of `step_per_device_batch_size`. "
-
         world_size = distributed_utils.get_world_size()
+
+        # Checks on rollout_batch_size only matter for PPO.
+        assert self.rollout_batch_size >= (self.rollout_per_device_batch_size * world_size), (
+            "rollout_batch_size is smaller than rollout_per_device_batch_size * world_size. "
+            "Increase the former or decrease the latter to fix this."
+        )
+        assert (
+            self.rollout_batch_size % (self.rollout_per_device_batch_size * world_size) == 0
+        ), "rollout_batch_size is not a multiple of rollout_per_device_batch_size * world_size. "
+
+        assert self.step_batch_size >= self.step_per_device_batch_size * world_size, (
+            "step_batch_size is smaller than step_per_device_batch_size * world_size. "
+            "Increase the former or decrease the latter to fix this."
+        )
+        assert (
+            self.step_batch_size % (self.step_per_device_batch_size * world_size) == 0
+        ), "step_batch_size is not a multiple of step_per_device_batch_size * world_size. "
+
         logger.warning(
-            f"rollout_batch_size: {self.rollout_batch_size}\n"
-            f"rollout_per_device_batch_size: {self.rollout_per_device_batch_size}\n"
-            f"world_size: {world_size}",
+            f"Rollout stats:\n"
+            f"\trollout_batch_size: {self.rollout_batch_size}\n"
+            f"\trollout_per_device_batch_size: {self.rollout_per_device_batch_size}\n"
+            f"\tworld_size: {world_size}\n",
         )
         assert (self.rollout_batch_size // self.rollout_per_device_batch_size) % world_size == 0
         self.rollout_accumulation_steps = self.rollout_batch_size // self.rollout_per_device_batch_size // world_size
 
         logger.warning(
-            f"step_batch_size: {self.step_batch_size}\n"
-            f"step_per_device_batch_size: {self.step_per_device_batch_size}\n"
-            f"world_size: {world_size}",  # Repeat to align log format.
+            f"Step stats:\n"
+            f"\tstep_batch_size: {self.step_batch_size}\n"
+            f"\tstep_per_device_batch_size: {self.step_per_device_batch_size}\n"
+            f"\tworld_size: {world_size}\n",
         )
         assert (self.step_batch_size // self.step_per_device_batch_size) % world_size == 0
         self.gradient_accumulation_steps = self.step_batch_size // self.step_per_device_batch_size // world_size
 
         logger.warning(
-            f"rollout_accumulation_steps: {self.rollout_accumulation_steps}, "
-            f"gradient_accumulation_steps: {self.gradient_accumulation_steps}"
+            f"Accumulation steps:\n"
+            f"\trollout_accumulation_steps: {self.rollout_accumulation_steps}\n"
+            f"\tgradient_accumulation_steps: {self.gradient_accumulation_steps}\n"
         )
 
         if self.save_steps_extra is not None:
