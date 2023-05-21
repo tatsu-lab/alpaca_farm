@@ -189,6 +189,7 @@ class RLTrainer(object):
         FSDP compat: all devices should do the forward pass, since sharded params need to be summoned.
                      only write results in the main process.
         """
+        # TODO: unhardcode inference args.
         logger.warning(f"Start evaluation at step: {step_idx}", main_process_only=True)
 
         prompts, list_dict_data = self.eval_dataset.prompts, self.eval_dataset.list_dict_data

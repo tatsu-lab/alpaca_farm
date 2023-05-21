@@ -405,15 +405,15 @@ def make_models(
     # Especially so for multiple processes on single node, each starting off with a copy of the model.
     # General strategy is to 1) create a model, 2) move it to target device / shard it, 3) then start next model,
     # as opposed to creating all needed models on CPU first, and separately moving / sharding each.
-    policy = rl_models.make_policy_with_base_model(base_model=make_generative_policy(), args=args)
+    policy = rl_models.make_policy_with_base_model(args, make_generative_policy(), tokenizer)
     if args.init_value_with_reward:
         # Initialize value from reward model a la OAI.
         logger.warning("Initializing value model with reward model.")
-        value_model = rl_models.make_value_with_base_model(base_model=make_reward_model().backbone_model, args=args)
+        value_model = rl_models.make_value_with_base_model(args, make_reward_model().backbone_model, tokenizer)
     else:
         logger.warning("Initializing value model with policy model.")
         # Initialize value from policy. Works for sanity, but generally performs worse in instruction-following.
-        value_model = rl_models.make_value_with_base_model(base_model=make_generative_policy(), args=args)
+        value_model = rl_models.make_value_with_base_model(args, make_generative_policy(), tokenizer)
     actor_critic = rl_models.ActorCritic(policy=policy, value_model=value_model)
     # We cast how respond should run. It's important the dtypes be consistent with training, since a bf16
     # fine-tuned model might not work with fp16 inference.
@@ -421,7 +421,7 @@ def make_models(
     actor_critic = common.prepare_model_for_custom_fn(model=actor_critic, fn_name="respond", accelerator=accelerator)
     actor_critic = accelerator.prepare(actor_critic)  # noqa
 
-    ref_policy = rl_models.make_policy_with_base_model(base_model=make_generative_policy(), args=args)
+    ref_policy = rl_models.make_policy_with_base_model(args, make_generative_policy(), tokenizer)
     ref_policy.requires_grad_(False)
     ref_policy = accelerator.prepare(ref_policy)  # noqa
 
