@@ -230,8 +230,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
 
         logprob = outputs["logprobs"]
         ratio = torch.exp(logprob - old_logprob)
-        # TODO(lxuechen): This part isn't strictly correct, mathematically. In principle, should use current logprob
-        #  for KL estimates. Nevertheless, this doesn't seem to impact performance.
+        # When current policy is close to the old policy, the KL component of this advantage is approximately correct.
         pg_losses = -advantages * ratio
         pg_losses2 = -advantages * torch.clamp(ratio, min=1.0 - self.args.cliprange, max=1.0 + self.args.cliprange)
         pg_loss = torch.maximum(pg_losses, pg_losses2).mean()
