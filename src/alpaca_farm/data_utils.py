@@ -66,24 +66,27 @@ def make_binary_reward_modeling_data_module(
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)
 
 
-def make_rl_data_module(args):
-    prompt_dict = utils.jload(args.prompt_dict_path)
+def make_rl_data_module(
+    data_args,
+    training_args,
+):
+    prompt_dict = utils.jload(data_args.prompt_dict_path)
 
-    alpaca_instructions = datasets.load_dataset(args.dataset_path, args.dataset_name)
-    train_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in args.train_splits])
-    eval_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in args.eval_splits])
+    alpaca_instructions = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
+    train_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.train_splits])
+    eval_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.eval_splits])
 
     train_dataset = QueryResponseDataset(
         df=train_df,
         prompt_dict=prompt_dict,
-        tokenizer=args.policy_tokenizer,
-        query_len=args.query_len,
+        tokenizer=training_args.policy_tokenizer,
+        query_len=data_args.query_len,
     )
     eval_dataset = QueryResponseDataset(
         df=eval_df,
         prompt_dict=prompt_dict,
-        tokenizer=args.policy_tokenizer,
-        query_len=args.query_len,
+        tokenizer=training_args.policy_tokenizer,
+        query_len=data_args.query_len,
     )
     return dict(
         train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=DataCollatorForQueryResponseDataset()

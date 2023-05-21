@@ -8,8 +8,8 @@ from typing import List, Optional
 import torch
 import transformers
 
-from . import constants, logging
-from .types import AnyPath, AnyPathOrNone
+from .. import constants, logging
+from ..types import AnyPath, AnyPathOrNone
 
 logger = logging.get_logger(__name__)
 
@@ -27,7 +27,7 @@ def _make_tokenizer(
 class DataArguments:
     dataset_path: str = field(default="tatsu-lab/alpaca_farm")
     dataset_name: str = field(default="alpaca_instructions")
-    train_splits: List[str] = field(default_factory=lambda: ["sft"])
+    train_splits: List[str] = field(default_factory=lambda: ["unlabeled"])
     eval_splits: List[str] = field(default_factory=lambda: ["val"])
     prompt_dict_path: str = field(
         default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
@@ -115,6 +115,7 @@ class TrainingArguments(transformers.TrainingArguments):
         else:
             self.save_steps_extra_list = []
 
+        # TODO: refactor this ---
         self.policy_tokenizer = _make_tokenizer(self.policy_model_name_or_path)
         self.reward_tokenizer = _make_tokenizer(self.reward_model_name_or_path)
 
@@ -122,6 +123,7 @@ class TrainingArguments(transformers.TrainingArguments):
         # reward_tokenizer also left pads, since we need the embedding of the right most non-pad token.
         self.policy_tokenizer.padding_side = "left"
         self.reward_tokenizer.padding_side = "left"
+        # ---
 
         truncate_tokens = self.truncate_tokens
         if truncate_tokens is None:

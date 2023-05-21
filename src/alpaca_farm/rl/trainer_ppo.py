@@ -6,15 +6,15 @@ import pandas as pd
 import torch
 import tqdm
 import transformers
-from torch import nn
 from torch.distributed.fsdp.fully_sharded_data_parallel import FullStateDictConfig
 from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
 from transformers.modeling_utils import unwrap_model
 
-from . import accelerate_patch, common, constants, data_preprocessor, logging, torch_ops, trainer_rl, utils
-from .models import rl_models
-from .types import LRScheduler, Tensor
+from .. import accelerate_patch, common, constants, data_preprocessor, logging, torch_ops, utils
+from ..models import rl_models
+from ..types import LRScheduler, Tensor
+from . import trainer_rl
 
 logger = logging.get_logger(__name__)
 
