@@ -95,13 +95,13 @@ def make_rl_data_module(
         df=train_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
-        query_len=data_args.query_len,
+        query_len=training_args.query_len,
     )
     eval_dataset = QueryResponseDataset(
         df=eval_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
-        query_len=data_args.query_len,
+        query_len=training_args.query_len,
     )
     return dict(
         train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=DataCollatorForQueryResponseDataset()
