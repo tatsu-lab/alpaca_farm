@@ -17,6 +17,7 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages("src"),
     install_requires=[
+        "datasets",
         "einops",
         "nltk",
         "accelerate>=0.18.0",
@@ -36,7 +37,8 @@ setuptools.setup(
     extras_require={
         "full": [
             # Efficiency.
-            "flash-attn" "apex",
+            "flash-attn",
+            "apex",
             # Plotting and visualization.
             "benepar",
             "spacy",
