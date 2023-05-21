@@ -170,7 +170,7 @@ def test_decoding():
 
 @torch.inference_mode()
 def profile_decoding():
-    # TODO(lxuechen): For short sequences, the mixed flash/non-flash approach is still slower.
+    # For short sequences, the mixed flash/non-flash approach is still slower.
     model_name = "facebook/opt-1.3b"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
