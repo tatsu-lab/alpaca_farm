@@ -9,6 +9,7 @@ from typing import Callable, Optional, Sequence, Union
 import numpy as np
 import torch
 import transformers
+from torch.utils.data import DataLoader
 
 from . import logging
 from .types import Numeric
@@ -151,5 +152,21 @@ def manual_seed(args_or_seed: Union[int, argparse.Namespace], fix_cudnn=False):
     torch.cuda.manual_seed_all(args_or_seed)
     os.environ["PYTHONHASHSEED"] = str(args_or_seed)
     if fix_cudnn:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True  # noqa
+        torch.backends.cudnn.benchmark = False  # noqa
+
+
+class InfiniteLoader(object):
+    """Wraps an existing loader so that it outputs stuff indefinitely; useful for semi-supervised learning."""
+
+    def __init__(self, loader: DataLoader):
+        super(InfiniteLoader, self).__init__()
+        self.loader = loader
+        self.iterator = iter(loader)
+
+    def __next__(self):
+        try:
+            return next(self.iterator)
+        except StopIteration:
+            self.iterator = iter(self.loader)
+            return next(self.iterator)
