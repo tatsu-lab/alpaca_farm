@@ -12,6 +12,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
 from transformers.modeling_utils import unwrap_model
 
 from .. import accelerate_patch, common, constants, data_preprocessor, logging, torch_ops, utils
+from ..models import reward_model as reward_model_module
 from ..models import rl_models
 from ..types import AnyPath, AnyPathOrNone, LRScheduler, Tensor
 from . import rl_trainer
@@ -390,7 +391,7 @@ def make_models(
         return base_model
 
     def make_reward_model():
-        return reward_model.RewardModel.from_pretrained(
+        return reward_model_module.RewardModel.from_pretrained(
             args.reward_model_name_or_path,
             flash_attn=args.flash_attn,
             mixed_precision=accelerator.mixed_precision,

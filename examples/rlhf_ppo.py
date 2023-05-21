@@ -33,8 +33,8 @@ def main():
     )
     logger.warning(accelerator.state, main_process_only=False)  # Each process log their own state.
 
-    model_module: dict = make_models(args=training_args, accelerator=accelerator)
     tokenizer: transformers.PreTrainedTokenizer = make_tokenizer(args=training_args)
+    model_module: dict = make_models(tokenizer=tokenizer, args=training_args, accelerator=accelerator)
     data_module: dict = data_utils.make_rl_data_module(
         tokenizer=tokenizer, data_args=data_args, training_args=training_args
     )
