@@ -98,7 +98,7 @@ class TrainingArguments(transformers.TrainingArguments):
         world_size = distributed_utils.get_world_size()
 
         # Checks on rollout_batch_size only matter for PPO.
-        assert self.rollout_batch_size >= (self.rollout_per_device_batch_size * world_size), (
+        assert self.rollout_batch_size >= self.rollout_per_device_batch_size * world_size, (
             "rollout_batch_size is smaller than rollout_per_device_batch_size * world_size. "
             "Increase the former or decrease the latter to fix this."
         )
