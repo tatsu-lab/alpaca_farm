@@ -32,6 +32,7 @@ class TrainingArguments(transformers.TrainingArguments):
     wandb_project: str = field(default=constants.WANDB_PROJECT)
     cache_dir: Optional[str] = field(default=constants.DEFAULT_CACHE_DIR)
     flash_attn: bool = field(default=False)
+    optim: str = field(default="adamw_torch")
     truncate_tokens: Optional[List[str]] = field(
         default_factory=lambda: None,
         metadata={
