@@ -1,3 +1,8 @@
+"""General utility functions.
+
+Internal map:
+    https://github.com/lxuechen/ml-swissknife/blob/main/ml_swissknife/utils.py
+"""
 import argparse
 import functools
 import io

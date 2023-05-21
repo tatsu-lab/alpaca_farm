@@ -46,6 +46,24 @@ def format_output(example: dict, eos_token: Optional[str] = None, output_key="ou
     return f"{example[output_key]}{eos_token}"
 
 
+def format_prompt_with_data_frame(
+    df: pd.DataFrame,
+    prompt_dict: dict,
+    df_postprocessor: Optional[Callable] = None,
+    return_dict=False,
+):
+    if df_postprocessor is not None:
+        df = df_postprocessor(df)
+    list_dict_data = df.to_dict(orient="records")
+
+    prompts = [format_prompt(example, prompt_dict) for example in list_dict_data]
+    metadata = {"prompt_dict": prompt_dict}
+
+    if return_dict:
+        return dict(prompts=prompts, list_dict_data=list_dict_data, metadata=metadata)
+    return prompts, list_dict_data, metadata
+
+
 def _tokenize_fn(strings: Sequence[str], tokenizer: transformers.PreTrainedTokenizer) -> dict:
     """Tokenize a list of strings and return the tokenized content as well metadata (e.g., truncation statistics)."""
     padding = getattr(tokenizer, "padding", "max_length")

@@ -18,10 +18,13 @@ logger = logging.get_logger(__name__)
 
 
 class Policy(nn.Module, abc.ABC):
-    def __init__(self, base_model: transformers.PreTrainedModel, args):
+    def __init__(
+        self, args, base_model: transformers.PreTrainedModel, base_tokenizer: transformers.PreTrainedTokenizer
+    ):
         super().__init__()
-        self.base_model = base_model
         self.args = args
+        self.base_model = base_model
+        self.base_tokenizer = base_tokenizer
 
     @abc.abstractmethod
     def forward(
@@ -65,7 +68,7 @@ class AutoregressivePolicy(Policy):
         if temperature is None:
             temperature = self.args.temperature
         input_ids = torch.cat([queries, responses], dim=1)
-        attention_mask = input_ids.ne(self.args.policy_tokenizer.pad_token_id)
+        attention_mask = input_ids.ne(self.base_tokenizer.pad_token_id)
         attention_mask[:, : queries.size(1)] = query_attn_masks
         # Fix position id issues and ensure consistency with `respond` for GPT and OPT.
         inputs = self.base_model.prepare_inputs_for_generation(
@@ -77,7 +80,7 @@ class AutoregressivePolicy(Policy):
         original_logits = outputs.logits[:, -self.args.response_len - 1 : -1]
         logits = original_logits / temperature
         labels = input_ids[:, -self.args.response_len :]
-        logprobs = torch_ops.compute_logprobs(logits, labels, ignore_index=self.args.policy_tokenizer.pad_token_id)
+        logprobs = torch_ops.compute_logprobs(logits, labels, ignore_index=self.base_tokenizer.pad_token_id)
         entropies = -(logits.softmax(dim=-1) * logits.log_softmax(dim=-1)).sum(dim=-1)
         last_hidden_state = outputs.hidden_states[-1][:, -self.args.response_len - 1 : -1]
         return dict(
@@ -102,7 +105,7 @@ class AutoregressivePolicy(Policy):
             attention_mask=query_attn_masks,
             do_sample=True,
             max_new_tokens=self.args.response_len,
-            pad_token_id=self.args.policy_tokenizer.pad_token_id,
+            pad_token_id=self.base_tokenizer.pad_token_id,
             top_p=1.0,
             top_k=0,
             temperature=temperature,
@@ -112,16 +115,19 @@ class AutoregressivePolicy(Policy):
         responses = torch_ops.right_pad(
             sequences[:, queries.size(1) :],
             target_size=(sequences.size(0), self.args.response_len),
-            value=self.args.policy_tokenizer.pad_token_id,
+            value=self.base_tokenizer.pad_token_id,
         )
         return dict(responses=responses)  # Size (bsz * num_return_sequences, response_len).
 
 
 class Value(nn.Module, abc.ABC):
-    def __init__(self, base_model: transformers.PreTrainedModel, args):
+    def __init__(
+        self, args, base_model: transformers.PreTrainedModel, base_tokenizer: transformers.PreTrainedTokenizer
+    ):
         super().__init__()
-        self.base_model = base_model
         self.args = args
+        self.base_model = base_model
+        self.base_tokenizer = base_tokenizer
         hidden_size = common.get_transformer_hidden_size(base_model)
         value_head = torch.nn.Linear(hidden_size, 1)
         value_head.weight.data.zero_()
@@ -136,12 +142,12 @@ class Value(nn.Module, abc.ABC):
 class AutoregressiveValue(Value):
     def forward(self, queries: Tensor, query_attn_masks: Tensor, responses: Tensor) -> Dict[str, Tensor]:
         sequences = torch.cat([queries, responses], dim=1)
-        sequence_attn_masks = sequences.ne(self.args.policy_tokenizer.pad_token_id)
+        sequence_attn_masks = sequences.ne(self.base_tokenizer.pad_token_id)
 
         inputs = self.base_model.prepare_inputs_for_generation(
             input_ids=sequences,
             attention_mask=sequence_attn_masks,
-            use_cache=False,  # noqa
+            use_cache=False,
         )
         outputs = self.base_model.model(**inputs, return_dict=True)
         # value[t]: \hat{V}(sequences_{:t-1}); must align with `_estimate_advantage`.
@@ -150,15 +156,45 @@ class AutoregressiveValue(Value):
         return dict(values=values)
 
 
-def make_policy_with_base_model(base_model: transformers.PreTrainedModel, args) -> Policy:
+class ActorCritic(nn.Module):
+    def __init__(self, policy: Policy, value_model: Value):
+        super(ActorCritic, self).__init__()
+        self.policy = policy
+        self.value_model = value_model
+
+    def forward(
+        self,
+        queries: Tensor,
+        query_attn_masks: Tensor,
+        responses: Tensor,
+        temperature: Optional[float] = None,
+    ) -> Dict[str, Tensor]:
+        # Assume the policy and value model share the same tokenizer.
+        o1 = self.policy(queries, query_attn_masks, responses, temperature)
+        o2 = self.value_model(queries, query_attn_masks, responses)
+        return {**o1, **o2}
+
+    def respond(
+        self, queries: Tensor, query_attn_masks: Tensor, temperature: Optional[float] = None
+    ) -> Dict[str, Tensor]:
+        return self.policy.respond(queries=queries, query_attn_masks=query_attn_masks, temperature=temperature)
+
+
+def make_policy_with_base_model(
+    args, base_model: transformers.PreTrainedModel, base_tokenizer: transformers.PreTrainedTokenizer
+) -> Policy:
     if base_model.config.is_encoder_decoder:
         raise NotImplementedError
     else:
-        return AutoregressivePolicy(base_model, args)
+        return AutoregressivePolicy(args, base_model, base_tokenizer)
 
 
-def make_value_with_base_model(base_model: transformers.PreTrainedModel, args) -> Value:
+def make_value_with_base_model(
+    args,
+    base_model: transformers.PreTrainedModel,
+    base_tokenizer: transformers.PreTrainedTokenizer,
+) -> Value:
     if base_model.config.is_encoder_decoder:
         raise NotImplementedError
     else:
-        return AutoregressiveValue(base_model, args)
+        return AutoregressiveValue(args, base_model, base_tokenizer)

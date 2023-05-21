@@ -1,9 +1,10 @@
-"""Light wrapper around OpenAI API.
+"""Light wrapper for OpenAI API.
 
-Should not rewrite these multiple times for different projects...
-
-For reference:
+Reference API:
     https://beta.openai.com/docs/api-reference/completions/create
+
+Internal map:
+    https://github.com/lxuechen/ml-swissknife/blob/main/ml_swissknife/openai_utils.py
 """
 import copy
 import dataclasses

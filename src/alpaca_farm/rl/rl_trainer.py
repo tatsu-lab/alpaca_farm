@@ -13,9 +13,10 @@ from torch.distributed.fsdp import ShardingStrategy
 from torch.utils.data import DataLoader, TensorDataset
 from transformers.trainer_utils import enable_full_determinism, set_seed
 
-from . import accelerate_patch, common, data_preprocessor, logging, rl_utils, utils
-from .inference import decode, score
-from .types import LRScheduler, Tensor
+from .. import accelerate_patch, common, data_preprocessor, logging, trainer_utils, utils
+from ..inference import decode, score
+from ..types import LRScheduler, Tensor
+from . import kl_controller
 
 FIRST_STEP_IDX = 1
 
@@ -32,6 +33,7 @@ class RLTrainer(object):
         policy: nn.Module,
         ref_policy: nn.Module,
         reward_model: nn.Module,
+        tokenizer: transformers.PreTrainedTokenizer,
         accelerator: accelerate_patch.MyAccelerator,
         optimizer: Optional[torch.optim.Optimizer] = None,
         lr_scheduler: Optional[LRScheduler] = None,
@@ -44,11 +46,13 @@ class RLTrainer(object):
         self.policy = policy
         self.ref_policy = ref_policy
         self.reward_model = reward_model
+        self.tokenizer = tokenizer
         self.optimizer = optimizer
         self.accelerator = accelerator
         self.lr_scheduler = lr_scheduler
-        self.kl_ctl = rl_utils.make_kl_controller(args, self.accelerator)
+        self.kl_ctl = kl_controller.make_kl_controller(args, self.accelerator)
         self.log_history = []
+        self.args.set_truncate_token_ids(self.tokenizer)
         enable_full_determinism(self.args.seed) if self.args.full_determinism else set_seed(self.args.seed)
 
     @abc.abstractmethod
@@ -103,7 +107,7 @@ class RLTrainer(object):
         not be wrapped with `torch.no_grad` or `torch.enable_grad`!!!
         """
         if self.accelerator.distributed_type == DistributedType.FSDP:
-            inputs = self.args.policy_tokenizer("fsdp are you happy now? :)" * 50, return_tensors="pt")
+            inputs = self.tokenizer("fsdp are you happy now? :)" * 50, return_tensors="pt")
             inputs = common.prepare_inputs(inputs, device=self.accelerator.device)
             self.policy(inputs["input_ids"], inputs["attention_mask"], inputs["input_ids"])
 
@@ -145,26 +149,11 @@ class RLTrainer(object):
         return stats
 
     def create_optimizer_and_scheduler(self, num_training_steps: int):
-        # TODO: Refactor
-        if self.optimizer is None:
-            if common.apex_is_installed():
-                logger.warning("apex is installed. Using apex FusedAdam.")
-                from apex.optimizers import FusedAdam
-
-                optimizer_cls = FusedAdam
-            else:
-                logger.warning("apex is not installed. Reverting to native non-fused Adam.")
-                optimizer_cls = torch.optim.Adam
-            self.optimizer = optimizer_cls(
-                self.policy.parameters(), lr=self.args.learning_rate, eps=self.args.adam_epsilon
-            )
-        if self.lr_scheduler is None:
-            self.lr_scheduler = transformers.get_linear_schedule_with_warmup(
-                self.optimizer,
-                num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
-                num_training_steps=num_training_steps,
-            )
-        self.optimizer, self.lr_scheduler = self.accelerator.prepare(self.optimizer, self.lr_scheduler)  # noqa
+        optimizer = trainer_utils.create_optimizer(args=self.args, model=self.policy, optimizer=self.optimizer)
+        lr_scheduler = trainer_utils.create_scheduler(
+            args=self.args, optimizer=optimizer, lr_scheduler=self.lr_scheduler, num_training_steps=num_training_steps
+        )
+        self.optimizer, self.lr_scheduler = self.accelerator.prepare(optimizer, lr_scheduler)
         self.accelerator.register_for_checkpointing(self.lr_scheduler)  # LR scheduler needs another call to save.
         return self.optimizer, self.lr_scheduler
 
@@ -188,7 +177,7 @@ class RLTrainer(object):
         ):
             if step_idx % self.args.save_steps == 0 or step_idx in self.args.save_steps_extra_list:
                 self.save_model(self.args.output_dir + f"_ckpt_{step_idx}")
-            if step_idx % self.args.eval_steps == 0:
+            if self.args.eval_steps is not None and step_idx % self.args.eval_steps == 0:
                 self.evaluate(step_idx)
             self.log_history.append(self.step(infinite_train_dataloader, step_idx))
         return self.log_history
@@ -200,6 +189,7 @@ class RLTrainer(object):
         FSDP compat: all devices should do the forward pass, since sharded params need to be summoned.
                      only write results in the main process.
         """
+        # TODO: unhardcode inference args.
         logger.warning(f"Start evaluation at step: {step_idx}", main_process_only=True)
 
         prompts, list_dict_data = self.eval_dataset.prompts, self.eval_dataset.list_dict_data
@@ -222,7 +212,7 @@ class RLTrainer(object):
 
         outputs = decode.decode_prompts_with_huggingface_given_model(
             model=unwrapped_policy,
-            tokenizer=self.args.policy_tokenizer,
+            tokenizer=self.tokenizer,
             prompts=prompts,
             decoding_args=decode.HFDecodingArguments(max_new_tokens=self.args.response_len, temperature=temperature),
             per_device_batch_size=self.args.per_device_eval_batch_size,
@@ -231,7 +221,7 @@ class RLTrainer(object):
         sequences = [i + o for i, o in utils.zip_(prompts, outputs)]
         rewards = score.score_sequences_with_huggingface_given_model(
             model=self.reward_model,
-            tokenizer=self.args.reward_tokenizer,
+            tokenizer=self.tokenizer,
             sequences=sequences,
             per_device_batch_size=self.args.rollout_per_device_batch_size,
             divide_work=False,

@@ -6,9 +6,10 @@ from typing import List, Literal
 
 import transformers
 
-from alpaca_farm import common, constants, data_postprocessor, data_utils, logging, trainer_reward_modeling
+from alpaca_farm import common, constants, data_postprocessor, data_utils, logging
 from alpaca_farm.auto_feedback import convert
 from alpaca_farm.models import reward_model
+from alpaca_farm.reward_modeling_trainer import Trainer, compute_reward_modeling_metrics
 
 logger = logging.get_logger(__name__)
 
@@ -63,7 +64,7 @@ class TrainingArguments(transformers.TrainingArguments):
     pad_token: str = field(default=constants.DEFAULT_PAD_TOKEN)
     cache_dir: str = field(default=constants.DEFAULT_CACHE_DIR)
     wandb_project: str = field(default=constants.WANDB_PROJECT)
-    flash_attn: bool = field(default=True, metadata={"help": "Whether to use flash attention."})
+    flash_attn: bool = field(default=False)
     optim: str = field(default="adamw_torch")
     model_max_length: int = field(
         default=512,
@@ -147,11 +148,11 @@ def main():
         training_args=training_args,
     )
 
-    trainer = trainer_reward_modeling.Trainer(
+    trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        compute_metrics=trainer_reward_modeling.compute_reward_modeling_metrics,
+        compute_metrics=compute_reward_modeling_metrics,
         **data_module,
     )
 
