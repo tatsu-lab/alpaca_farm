@@ -14,12 +14,12 @@ from transformers.modeling_utils import unwrap_model
 from .. import accelerate_patch, common, constants, data_preprocessor, logging, torch_ops, utils
 from ..models import rl_models
 from ..types import LRScheduler, Tensor
-from . import trainer_rl
+from . import rl_trainer
 
 logger = logging.get_logger(__name__)
 
 
-class PPOTrainer(trainer_rl.RLTrainer):
+class PPOTrainer(rl_trainer.RLTrainer):
     def __init__(
         self,
         args,

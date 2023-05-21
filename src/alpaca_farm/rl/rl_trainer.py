@@ -16,7 +16,7 @@ from transformers.trainer_utils import enable_full_determinism, set_seed
 from .. import accelerate_patch, common, data_preprocessor, logging, utils
 from ..inference import decode, score
 from ..types import LRScheduler, Tensor
-from . import kl_scheduler
+from . import kl_controller
 
 FIRST_STEP_IDX = 1
 
@@ -48,7 +48,7 @@ class RLTrainer(object):
         self.optimizer = optimizer
         self.accelerator = accelerator
         self.lr_scheduler = lr_scheduler
-        self.kl_ctl = kl_scheduler.make_kl_controller(args, self.accelerator)
+        self.kl_ctl = kl_controller.make_kl_controller(args, self.accelerator)
         self.log_history = []
         enable_full_determinism(self.args.seed) if self.args.full_determinism else set_seed(self.args.seed)
 

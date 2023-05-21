@@ -2,8 +2,8 @@ import transformers
 from accelerate import DistributedDataParallelKwargs
 
 from alpaca_farm import accelerate_patch, data_utils, logging
+from alpaca_farm.rl.ppo_trainer import PPOTrainer, make_model_module
 from alpaca_farm.rl.rl_common import DataArguments, TrainingArguments
-from alpaca_farm.rl.trainer_ppo import PPOTrainer, make_model_module
 
 logger = logging.get_logger(__name__)
 

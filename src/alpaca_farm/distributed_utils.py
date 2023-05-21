@@ -1,4 +1,11 @@
-# maps to ml_swissknife/distributed_utils.py
+"""Utilities for PyTorch's distributed training.
+
+Compatible with torchrun / elastic.
+
+Internal map:
+    https://github.com/lxuechen/ml-swissknife/blob/main/ml_swissknife/distributed_utils.py
+"""
+
 import os
 import sys
 from typing import Optional
