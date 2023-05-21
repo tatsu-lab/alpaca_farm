@@ -13,7 +13,7 @@ from torch.distributed.fsdp import ShardingStrategy
 from torch.utils.data import DataLoader, TensorDataset
 from transformers.trainer_utils import enable_full_determinism, set_seed
 
-from .. import accelerate_patch, common, data_preprocessor, logging, utils
+from .. import accelerate_patch, common, data_preprocessor, logging, trainer_utils, utils
 from ..inference import decode, score
 from ..types import LRScheduler, Tensor
 from . import kl_controller
@@ -149,26 +149,11 @@ class RLTrainer(object):
         return stats
 
     def create_optimizer_and_scheduler(self, num_training_steps: int):
-        # TODO: Refactor
-        if self.optimizer is None:
-            if common.apex_is_installed():
-                logger.warning("apex is installed. Using apex FusedAdam.")
-                from apex.optimizers import FusedAdam
-
-                optimizer_cls = FusedAdam
-            else:
-                logger.warning("apex is not installed. Reverting to native non-fused Adam.")
-                optimizer_cls = torch.optim.Adam
-            self.optimizer = optimizer_cls(
-                self.policy.parameters(), lr=self.args.learning_rate, eps=self.args.adam_epsilon
-            )
-        if self.lr_scheduler is None:
-            self.lr_scheduler = transformers.get_linear_schedule_with_warmup(
-                self.optimizer,
-                num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
-                num_training_steps=num_training_steps,
-            )
-        self.optimizer, self.lr_scheduler = self.accelerator.prepare(self.optimizer, self.lr_scheduler)  # noqa
+        optimizer = trainer_utils.create_optimizer(args=self.args, model=self.policy, optimizer=self.optimizer)
+        lr_scheduler = trainer_utils.create_scheduler(
+            args=self.args, optimizer=optimizer, lr_scheduler=self.lr_scheduler, num_training_steps=num_training_steps
+        )
+        self.optimizer, self.lr_scheduler = self.accelerator.prepare(optimizer, lr_scheduler)
         self.accelerator.register_for_checkpointing(self.lr_scheduler)  # LR scheduler needs another call to save.
         return self.optimizer, self.lr_scheduler
 
