@@ -39,5 +39,6 @@ class RewardModel(transformers.PreTrainedModel):
         )
         last_hidden_state = outputs.last_hidden_state
         last_hidden_state_at_the_end = last_hidden_state[:, -1, :]
+        # TODO(lxuechen): Make returning rewards at all positions and last_hidden_state an option.
         rewards = self.reward_head(last_hidden_state_at_the_end).squeeze(-1)
         return RewardModelOutput(rewards=rewards) if return_dict else (rewards,)
