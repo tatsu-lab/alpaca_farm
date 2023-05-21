@@ -309,7 +309,9 @@ class PPOTrainer(trainer_rl.RLTrainer):
                     key: self.args.policy_tokenizer.batch_decode(
                         tensor, skip_special_tokens=False, clean_up_tokenization_spaces=False
                     )
-                    for key, tensor in unpack_dict(rollouts, keys=("queries", "responses"), return_type=dict).items()
+                    for key, tensor in common.unpack_dict(
+                        rollouts, keys=("queries", "responses"), return_type=dict
+                    ).items()
                 }
                 rollouts_to_disk = pd.DataFrame(rollouts_to_disk).to_dict(orient="records")
                 utils.jdump(rollouts_to_disk, utils.join(self.args.output_dir, "rollouts", f"step_{step_idx}.json"))
@@ -429,15 +431,4 @@ def make_model_components(
     reward_model.requires_grad_(False)
     reward_model = accelerator.prepare(reward_model)
 
-    # TODO: This is a hack to get FSDP running. Remove in the future when we figure things out.
-    # TODO: Package this function.
-    if accelerator.distributed_type == accelerate.DistributedType.FSDP:
-        inputs = args.policy_tokenizer("fsdp are you happy now??? :)" * 50, return_tensors="pt")
-        inputs = {key: value.to(accelerator.device) for key, value in inputs.items()}
-        actor_critic(inputs["input_ids"], inputs["attention_mask"], inputs["input_ids"])
-
-    return dict(
-        policy=actor_critic,
-        ref_policy=ref_policy,
-        reward_model=reward_model,
-    )
+    return dict(policy=actor_critic, ref_policy=ref_policy, reward_model=reward_model)

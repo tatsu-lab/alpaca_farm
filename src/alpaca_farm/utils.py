@@ -1,4 +1,3 @@
-# maps to ml_swissknife/utils.py
 import argparse
 import functools
 import io
@@ -16,14 +15,22 @@ from .types import Numeric
 
 logger = logging.get_logger(__name__)
 
+home = os.path.expanduser("~")
+home_data = os.path.join(home, "data")
+join = os.path.join
+pathexists = os.path.exists
 makedirs = functools.partial(os.makedirs, exist_ok=True)
+dirname = os.path.dirname
+basename = os.path.basename
 
 
 def alleq(l: Sequence, f: Optional[Callable] = lambda x, y: x == y):
     """Check all arguments in a sequence are equal according to a given criterion.
+
     Args:
         f: A bi-variate boolean function.
         l: A list/tuple.
+
     Returns:
         True if everything is equal; otherwise False.
     """
@@ -83,13 +90,6 @@ def jdump(obj: Union[str, dict, list], f, mode="w", indent=4, default=str):
 
 def jdumps(obj, indent=4, default=str):
     return json.dumps(obj, indent=indent, default=default)
-
-
-def flatten_nested_pystruct(sequence: Sequence):
-    """Flatten nested python list/tuple/set and return a list of elements."""
-    if not isinstance(sequence, (tuple, list, set)):
-        return [sequence]
-    return [i for entry in sequence for i in flatten_nested_pystruct(entry)]
 
 
 def mean(*seqs: Sequence[Numeric]) -> Union[Numeric, Sequence[Numeric]]:

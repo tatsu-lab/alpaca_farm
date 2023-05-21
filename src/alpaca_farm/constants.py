@@ -37,3 +37,25 @@ MODEL_NAME_TO_FAMILY = {
     "EleutherAI/pythia-6.9b-deduped": "pythia",
     "EleutherAI/pythia-12b-deduped": "pythia",
 }
+
+# Huggingface model naming convention.
+WEIGHTS_NAME = "pytorch_model.bin"
+WEIGHTS_INDEX_NAME = "pytorch_model.bin.index.json"
+TF2_WEIGHTS_NAME = "tf_model.h5"
+TF2_WEIGHTS_INDEX_NAME = "tf_model.h5.index.json"
+TF_WEIGHTS_NAME = "model.ckpt"
+FLAX_WEIGHTS_NAME = "flax_model.msgpack"
+FLAX_WEIGHTS_INDEX_NAME = "flax_model.msgpack.index.json"
+SAFE_WEIGHTS_NAME = "model.safetensors"
+SAFE_WEIGHTS_INDEX_NAME = "model.safetensors.index.json"
+CONFIG_NAME = "config.json"
+FEATURE_EXTRACTOR_NAME = "preprocessor_config.json"
+IMAGE_PROCESSOR_NAME = FEATURE_EXTRACTOR_NAME
+GENERATION_CONFIG_NAME = "generation_config.json"
+MODEL_CARD_NAME = "modelcard.json"
+
+TRAINING_ARGS_NAME = "training_args.bin"
+TRAINER_STATE_NAME = "trainer_state.json"
+OPTIMIZER_NAME = "optimizer.pt"
+SCHEDULER_NAME = "scheduler.pt"
+SCALER_NAME = "scaler.pt"
