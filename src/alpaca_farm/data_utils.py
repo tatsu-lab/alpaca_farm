@@ -16,8 +16,8 @@ from .data_preprocessor import (
 
 def make_supervised_data_module(
     tokenizer: transformers.PreTrainedTokenizer,
-    training_args,
     data_args,
+    training_args,
 ):
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
@@ -67,6 +67,7 @@ def make_binary_reward_modeling_data_module(
 
 
 def make_rl_data_module(
+    tokenizer: transformers.PreTrainedTokenizer,
     data_args,
     training_args,
 ):
@@ -79,13 +80,13 @@ def make_rl_data_module(
     train_dataset = QueryResponseDataset(
         df=train_df,
         prompt_dict=prompt_dict,
-        tokenizer=training_args.policy_tokenizer,
+        tokenizer=tokenizer,
         query_len=data_args.query_len,
     )
     eval_dataset = QueryResponseDataset(
         df=eval_df,
         prompt_dict=prompt_dict,
-        tokenizer=training_args.policy_tokenizer,
+        tokenizer=tokenizer,
         query_len=data_args.query_len,
     )
     return dict(
