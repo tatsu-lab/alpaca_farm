@@ -109,7 +109,7 @@ class AutoregressivePolicy(Policy):
             num_return_sequences=num_return_sequences,
             synced_gpus=True,
         )
-        responses = common.right_pad(
+        responses = torch_ops.right_pad(
             sequences[:, queries.size(1) :],
             target_size=(sequences.size(0), self.args.response_len),
             value=self.args.policy_tokenizer.pad_token_id,

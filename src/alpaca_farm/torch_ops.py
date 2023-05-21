@@ -1,8 +1,9 @@
-from typing import Sequence
+from typing import Sequence, Union
 
 import torch
 import torch.nn.functional as F
 
+from . import utils
 from .types import Tensor
 
 
@@ -33,7 +34,7 @@ def pad_sequence_from_left(
 ):
     """Mirror of `torch.nn.utils.rnn.pad_sequence`, but pad from left."""
     sequences = tuple(sequence.flip(0) for sequence in sequences)
-    padded_sequence = torch._C._nn.pad_sequence(sequences, batch_first, padding_value)
+    padded_sequence = torch._C._nn.pad_sequence(sequences, batch_first, padding_value)  # noqa
     padded_sequence = padded_sequence.flip(int(batch_first))
     return padded_sequence
 
@@ -50,3 +51,21 @@ def whiten(values: Tensor, shift_mean=True, epsilon=1e-8) -> Tensor:
     if not shift_mean:
         whitened = whitened + mean
     return whitened
+
+
+def pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0, left=True):
+    current_size = inputs.size()
+    diffs = tuple(ti - ci for ti, ci in utils.zip_(target_size, current_size))
+    pad_params = []
+    for diff in diffs:
+        pad_params = ([diff, 0] if left else [0, diff]) + pad_params
+    res = F.pad(inputs, pad=pad_params, value=value)
+    return res
+
+
+def left_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
+    return pad(inputs=inputs, target_size=target_size, value=value, left=True)
+
+
+def right_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
+    return pad(inputs=inputs, target_size=target_size, value=value, left=False)

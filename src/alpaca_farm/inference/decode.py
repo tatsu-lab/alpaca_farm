@@ -9,7 +9,7 @@ import torch
 import tqdm
 import transformers
 
-from .. import common, constants, distributed_utils, logging, utils
+from .. import common, constants, distributed_utils, logging, torch_ops, utils
 
 logger = logging.get_logger(__name__)
 
@@ -194,7 +194,7 @@ def decode_prompts_with_huggingface_given_model(
                 )
                 if not model.config.is_encoder_decoder:
                     internal_batch_sequences = internal_batch_sequences[:, inputs.shape[1] :]
-                internal_batch_sequences = common.right_pad(
+                internal_batch_sequences = torch_ops.right_pad(
                     internal_batch_sequences,
                     (internal_batch_sequences.size(0), pad_to_length),
                     value=tokenizer.pad_token_id,
@@ -221,7 +221,7 @@ def decode_prompts_with_huggingface_given_model(
             sequences = model.generate(inputs=inputs, attention_mask=attention_mask, **generate_kwargs)
             if not model.config.is_encoder_decoder:
                 sequences = sequences[:, inputs.shape[1] :]
-            sequences = common.right_pad(sequences, (sequences.size(0), pad_to_length), value=tokenizer.pad_token_id)
+            sequences = torch_ops.right_pad(sequences, (sequences.size(0), pad_to_length), value=tokenizer.pad_token_id)
 
         out_of_bound_mask = sequences >= len(tokenizer)
         if out_of_bound_mask.any():

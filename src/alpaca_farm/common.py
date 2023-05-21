@@ -1,4 +1,3 @@
-# maps to common.py
 import os
 import time
 import types
@@ -6,6 +5,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 
+import accelerate
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
@@ -356,24 +356,6 @@ def prepare_inputs(
     return data
 
 
-def pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0, left=True):
-    current_size = inputs.size()
-    diffs = tuple(ti - ci for ti, ci in utils.zip_(target_size, current_size))
-    pad_params = []
-    for diff in diffs:
-        pad_params = ([diff, 0] if left else [0, diff]) + pad_params
-    res = F.pad(inputs, pad=pad_params, value=value)
-    return res
-
-
-def left_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
-    return pad(inputs=inputs, target_size=target_size, value=value, left=True)
-
-
-def right_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
-    return pad(inputs=inputs, target_size=target_size, value=value, left=False)
-
-
 def cast_with_native_amp(func: Callable, mixed_precision: Optional[str] = None) -> Callable:
     """Almost like how huggingface accelerate cast `model.forward`."""
     if mixed_precision not in ("fp16", "bf16"):
@@ -389,7 +371,7 @@ def cast_with_native_amp(func: Callable, mixed_precision: Optional[str] = None) 
     return output_func
 
 
-def prepare_model_for_custom_fn(model: nn.Module, fn_name: str, accelerator: Accelerator) -> nn.Module:
+def prepare_model_for_custom_fn(model: nn.Module, fn_name: str, accelerator: accelerate.Accelerator) -> nn.Module:
     """Wrap a custom function of a model with the right mixed precision context.
 
     This function should be run a *raw* model, i.e., before wrapped into DDP or FSDP.

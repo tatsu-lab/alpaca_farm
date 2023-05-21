@@ -8,7 +8,7 @@ import torch
 import transformers
 from torch.utils.data import Dataset
 
-from . import common, constants, logging, torch_ops, utils
+from . import constants, logging, torch_ops, utils
 from .types import Tensor
 
 logger = logging.get_logger(__name__)
@@ -414,7 +414,7 @@ class QueryResponseDataset(Dataset):
 
         queries = torch.stack(
             [
-                common.left_pad(query, target_size=(query_len,), value=tokenizer.pad_token_id)
+                torch_ops.left_pad(query, target_size=(query_len,), value=tokenizer.pad_token_id)
                 for query in filtered_queries
             ]
         )
