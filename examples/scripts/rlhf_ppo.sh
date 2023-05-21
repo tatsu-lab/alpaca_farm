@@ -18,4 +18,5 @@ accelerate launch --config_file "${config_file}" examples/rlhf_ppo.py \
   --warmup_steps 5 \
   --kl_coef 0.02 \
   --total_epochs 10 \
-  --flash_attn True
+  --flash_attn True \
+  --prompt_dict_path "./examples/prompts/v0_inputs_noinputs.json"

@@ -20,7 +20,7 @@ class DataArguments:
     train_splits: List[str] = field(default_factory=lambda: ["unlabeled"])
     eval_splits: List[str] = field(default_factory=lambda: ["val"])
     prompt_dict_path: str = field(
-        default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
+        default=None,
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
     )
     query_len: int = field(default=192)
