@@ -36,8 +36,6 @@ class DataArguments:
         default=None,
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
     )
-    query_len: int = field(default=192)
-    response_len: int = field(default=300)
 
 
 @dataclass
@@ -99,6 +97,8 @@ class TrainingArguments(transformers.TrainingArguments):
             "Parse this with str.split('__')."
         },
     )
+    query_len: int = field(default=192)
+    response_len: int = field(default=300)
     policy_model_name_or_path: str = field(default=None)
     reward_model_name_or_path: str = field(default=None)
 
