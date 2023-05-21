@@ -85,9 +85,8 @@ class PPOTrainer(trainer_rl.RLTrainer):
     def _estimate_advantage(self, rewards: Tensor, values: Tensor) -> Dict[str, Tensor]:
         """Generalized advantage estimation.
 
-        References:
+        Reference:
             https://arxiv.org/abs/1506.02438
-            https://github.com/DLR-RM/stable-baselines3/blob/2bb8ef5e632a0e0dda291c2cd6735da75a4fcb7e/stable_baselines3/common/buffers.py#L371
         """
         if self.args.whiten_rewards:
             rewards = torch_ops.whiten(rewards, shift_mean=False)
@@ -254,6 +253,8 @@ class PPOTrainer(trainer_rl.RLTrainer):
 
         logprob = outputs["logprobs"]
         ratio = torch.exp(logprob - old_logprob)
+        # TODO(lxuechen): This part isn't strictly correct, mathematically. In principle, should use current logprob
+        #  for KL estimates. Nevertheless, this doesn't seem to impact performance.
         pg_losses = -advantages * ratio
         pg_losses2 = -advantages * torch.clamp(ratio, min=1.0 - self.args.cliprange, max=1.0 + self.args.cliprange)
         pg_loss = torch.maximum(pg_losses, pg_losses2).mean()
