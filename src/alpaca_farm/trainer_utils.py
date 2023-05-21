@@ -1,4 +1,6 @@
-from torch import nn
+from typing import Optional
+
+from torch import nn, optim
 from transformers import Trainer
 from transformers.optimization import get_scheduler
 from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
@@ -9,8 +11,15 @@ from . import logging
 logger = logging.get_logger(__name__)
 
 
-def create_optimizer(args, model, optimizer):
-    # This doesn't support sagemaker and fairscale.
+def create_optimizer(args, model: nn.Module, optimizer: Optional[optim.Optimizer] = None):
+    """Create optimizer for trainer.
+
+    This is detached version of the `Trainer.create_optimizer` method.
+    We don't support sagemaker and fairscale for simplicity.
+
+    Reference:
+        https://github.com/huggingface/transformers/blob/main/src/transformers/trainer.py
+    """
     opt_model = model
 
     if optimizer is None:
@@ -50,6 +59,13 @@ def create_optimizer(args, model, optimizer):
 
 
 def create_scheduler(args, optimizer, lr_scheduler, num_training_steps):
+    """Create scheduler for trainer.
+
+    This is detached version of the `Trainer.create_scheduler` method.
+
+    Reference:
+        https://github.com/huggingface/transformers/blob/main/src/transformers/trainer.py
+    """
     if lr_scheduler is None:
         lr_scheduler = get_scheduler(
             args.lr_scheduler_type,
