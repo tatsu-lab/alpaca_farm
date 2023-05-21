@@ -6,6 +6,8 @@ from typing import List, Optional
 import torch
 import transformers
 
+from alpaca_farm import distributed_utils
+
 from .. import constants, logging
 
 logger = logging.get_logger(__name__)
@@ -110,32 +112,32 @@ class TrainingArguments(transformers.TrainingArguments):
             self.step_batch_size % self.step_per_device_batch_size == 0
         ), "`step_batch_size` is not a multiple of `step_per_device_batch_size`. "
 
-        if self.save_steps_extra is not None:
-            self.save_steps_extra_list = [int(string) for string in self.save_steps_extra.split("__")]
-        else:
-            self.save_steps_extra_list = []
-
-    def set_accumulation_steps(self, num_processes: int):
+        world_size = distributed_utils.get_world_size()
         logger.warning(
             f"rollout_batch_size: {self.rollout_batch_size}\n"
             f"rollout_per_device_batch_size: {self.rollout_per_device_batch_size}\n"
-            f"num_processes: {num_processes}",
+            f"world_size: {world_size}",
         )
-        assert (self.rollout_batch_size // self.rollout_per_device_batch_size) % num_processes == 0
-        self.rollout_accumulation_steps = self.rollout_batch_size // self.rollout_per_device_batch_size // num_processes
+        assert (self.rollout_batch_size // self.rollout_per_device_batch_size) % world_size == 0
+        self.rollout_accumulation_steps = self.rollout_batch_size // self.rollout_per_device_batch_size // world_size
 
         logger.warning(
             f"step_batch_size: {self.step_batch_size}\n"
             f"step_per_device_batch_size: {self.step_per_device_batch_size}\n"
-            f"num_processes: {num_processes}",  # Repeat to align log format.
+            f"world_size: {world_size}",  # Repeat to align log format.
         )
-        assert (self.step_batch_size // self.step_per_device_batch_size) % num_processes == 0
-        self.gradient_accumulation_steps = self.step_batch_size // self.step_per_device_batch_size // num_processes
+        assert (self.step_batch_size // self.step_per_device_batch_size) % world_size == 0
+        self.gradient_accumulation_steps = self.step_batch_size // self.step_per_device_batch_size // world_size
 
         logger.warning(
             f"rollout_accumulation_steps: {self.rollout_accumulation_steps}, "
             f"gradient_accumulation_steps: {self.gradient_accumulation_steps}"
         )
+
+        if self.save_steps_extra is not None:
+            self.save_steps_extra_list = [int(string) for string in self.save_steps_extra.split("__")]
+        else:
+            self.save_steps_extra_list = []
 
     def set_truncate_token_ids(self, tokenizer: transformers.PreTrainedTokenizer):
         """Convert truncation token to token ids.
