@@ -4,7 +4,7 @@ import transformers
 from accelerate import DistributedDataParallelKwargs
 
 from alpaca_farm import accelerate_patch, data_utils, logging
-from alpaca_farm.rl.ppo_trainer import PPOTrainer, make_model_module
+from alpaca_farm.rl.ppo_trainer import PPOTrainer, make_models, make_tokenizer
 from alpaca_farm.rl.ppo_utils import DataArguments, TrainingArguments
 
 logger = logging.get_logger(__name__)
@@ -33,14 +33,18 @@ def main():
     )
     logger.warning(accelerator.state, main_process_only=False)  # Each process log their own state.
 
-    model_module: dict = make_model_module(args=training_args, accelerator=accelerator)
-    data_module: dict = data_utils.make_rl_data_module(data_args=data_args, training_args=training_args)
+    model_module: dict = make_models(args=training_args, accelerator=accelerator)
+    tokenizer: transformers.PreTrainedTokenizer = make_tokenizer(args=training_args)
+    data_module: dict = data_utils.make_rl_data_module(
+        tokenizer=tokenizer, data_args=data_args, training_args=training_args
+    )
 
     trainer = PPOTrainer(
         args=training_args,
         accelerator=accelerator,
-        **model_module,
         **data_module,
+        **model_module,
+        tokenizer=tokenizer,
     )
     trainer.train()
 

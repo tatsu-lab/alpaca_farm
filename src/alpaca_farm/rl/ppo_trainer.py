@@ -362,7 +362,17 @@ def _make_left_padded_tokenizer(
     return tokenizer
 
 
-def make_model_module(
+def make_tokenizer(args):
+    # policy_tokenizer left pads, since the policy requires batch decoding.
+    # reward_tokenizer also left pads, since we need the embedding of the right most non-pad token.
+    policy_tokenizer = _make_left_padded_tokenizer(args.policy_model_name_or_path)
+    reward_tokenizer = _make_left_padded_tokenizer(args.reward_model_name_or_path)
+    if policy_tokenizer.get_vocab() != reward_tokenizer.get_vocab():
+        raise ValueError("AlpacaFarm does not support different tokenizer for policy and reward models.")
+    return policy_tokenizer
+
+
+def make_models(
     args,
     accelerator: accelerate.Accelerator,
 ) -> dict:
@@ -388,16 +398,6 @@ def make_model_module(
             device_map={"": accelerator.device},
         )
 
-    # Create tokenizer.
-    # policy_tokenizer left pads, since the policy requires batch decoding.
-    # reward_tokenizer also left pads, since we need the embedding of the right most non-pad token.
-    policy_tokenizer = _make_left_padded_tokenizer(args.policy_model_name_or_path)
-    reward_tokenizer = _make_left_padded_tokenizer(args.reward_model_name_or_path)
-
-    if policy_tokenizer.get_vocab() != reward_tokenizer.get_vocab():
-        raise ValueError("AlpacaFarm does not support different tokenizer for policy and reward models.")
-
-    # Create model.
     # Model construction below seems convoluted, but it's made to trade time for RAM efficiency.
     # For large models, object creation could be extremely RAM intensive.
     # Especially so for multiple processes on single node, each starting off with a copy of the model.
@@ -427,4 +427,4 @@ def make_model_module(
     reward_model.requires_grad_(False)
     reward_model = accelerator.prepare(reward_model)
 
-    return dict(policy=actor_critic, ref_policy=ref_policy, reward_model=reward_model, tokenizer=policy_tokenizer)
+    return dict(policy=actor_critic, ref_policy=ref_policy, reward_model=reward_model)
