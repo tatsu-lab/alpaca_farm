@@ -64,7 +64,7 @@ class TrainingArguments(transformers.TrainingArguments):
     pad_token: str = field(default=constants.DEFAULT_PAD_TOKEN)
     cache_dir: str = field(default=constants.DEFAULT_CACHE_DIR)
     wandb_project: str = field(default=constants.WANDB_PROJECT)
-    flash_attn: bool = field(default=True, metadata={"help": "Whether to use flash attention."})
+    flash_attn: bool = field(default=False)
     optim: str = field(default="adamw_torch")
     model_max_length: int = field(
         default=512,

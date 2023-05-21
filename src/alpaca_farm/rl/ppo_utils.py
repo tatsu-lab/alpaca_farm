@@ -29,7 +29,7 @@ class DataArguments:
 class TrainingArguments(transformers.TrainingArguments):
     wandb_project: str = field(default=constants.WANDB_PROJECT)
     cache_dir: Optional[str] = field(default=constants.DEFAULT_CACHE_DIR)
-    flash_attn: bool = field(default=True, metadata={"help": "Whether to use flash attention."})
+    flash_attn: bool = field(default=False)
     truncate_tokens: Optional[List[str]] = field(
         default_factory=lambda: None,
         metadata={
@@ -49,10 +49,10 @@ class TrainingArguments(transformers.TrainingArguments):
     )
     total_epochs: int = field(default=10)
     rollout_batch_size: int = field(default=512)
-    step_batch_size: int = field(default=64)
-    rollout_per_device_batch_size: int = field(default=4)
+    step_batch_size: int = field(default=256)
+    rollout_per_device_batch_size: int = field(default=32)
     step_per_device_batch_size: int = field(default=2)
-    noptepochs: int = field(default=4)
+    noptepochs: int = field(default=2)
     vf_coef: float = field(default=0.1)
     cliprange: float = field(default=0.2)
     cliprange_value: float = field(default=0.2)
