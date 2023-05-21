@@ -41,9 +41,23 @@ class TrainingArguments(transformers.TrainingArguments):
     wandb_project: str = field(default=constants.WANDB_PROJECT)
     cache_dir: Optional[str] = field(default=constants.DEFAULT_CACHE_DIR)
     flash_attn: bool = field(default=True, metadata={"help": "Whether to use flash attention."})
-    truncate_tokens: Optional[List[str]] = field(default_factory=lambda: None)
-    truncate_after: Optional[int] = field(default=None)
-    penalty_reward_value: float = field(default=-1.0)
+    truncate_tokens: Optional[List[str]] = field(
+        default_factory=lambda: None,
+        metadata={
+            "help": "Tokens in strings to truncate at first occurrence. "
+            "This was used in original OAI summarization paper to avoid models returning incomplete sentences. "
+        },
+    )
+    truncate_after: Optional[int] = field(
+        default=None, metadata={"help": "Truncate after this number of tokens. Prevents early truncation."}
+    )
+    penalty_reward_value: float = field(
+        default=-1.0,
+        metadata={
+            "help": "Reward assigned to sequences that are truncated, "
+            "e.g., due to outputting incomplete sentences for given context window."
+        },
+    )
     total_epochs: int = field(default=10)
     rollout_batch_size: int = field(default=512)
     step_batch_size: int = field(default=64)
