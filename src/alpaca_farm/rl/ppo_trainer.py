@@ -443,4 +443,10 @@ def make_models(
     reward_model.requires_grad_(False)
     reward_model = accelerator.prepare(reward_model)
 
+    # TODO: This is a hack to get FSDP running. Remove in the future when we figure things out.
+    if accelerator.distributed_type == accelerate.DistributedType.FSDP:
+        inputs = tokenizer("fsdp are you happy now??? :)" * 50, return_tensors="pt")
+        inputs = {key: value.to(accelerator.device) for key, value in inputs.items()}
+        actor_critic(inputs["input_ids"], inputs["attention_mask"], inputs["input_ids"])
+
     return dict(policy=actor_critic, ref_policy=ref_policy, reward_model=reward_model)
