@@ -36,7 +36,8 @@ setuptools.setup(
     extras_require={
         "full": [
             # Efficiency.
-            "flash-attn" "apex",
+            "flash-attn",
+            "apex",
             # Plotting and visualization.
             "benepar",
             "spacy",
