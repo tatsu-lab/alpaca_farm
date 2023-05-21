@@ -373,6 +373,7 @@ def make_tokenizer(args):
 
 
 def make_models(
+    tokenizer: transformers.PreTrainedTokenizer,
     args,
     accelerator: accelerate.Accelerator,
 ) -> dict:
@@ -385,7 +386,7 @@ def make_models(
             low_cpu_mem_usage=True,
             device_map={"": accelerator.device},
         )
-        utils.stable_resize_token_embeddings(base_model, len(args.policy_tokenizer))
+        utils.stable_resize_token_embeddings(base_model, len(tokenizer))
         return base_model
 
     def make_reward_model():
