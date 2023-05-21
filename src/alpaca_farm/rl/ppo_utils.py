@@ -1,4 +1,3 @@
-import os
 import pathlib
 import sys
 from dataclasses import dataclass, field
@@ -8,18 +7,8 @@ import torch
 import transformers
 
 from .. import constants, logging
-from ..types import AnyPath, AnyPathOrNone
 
 logger = logging.get_logger(__name__)
-
-
-def _make_left_padded_tokenizer(
-    model_name_or_path: AnyPath, cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR
-) -> transformers.PreTrainedTokenizer:
-    tokenizer = transformers.AutoTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir, padding_side="left")
-    if tokenizer.pad_token is None:
-        tokenizer.add_special_tokens(dict(pad_token=constants.DEFAULT_PAD_TOKEN))
-    return tokenizer
 
 
 @dataclass
@@ -121,24 +110,10 @@ class TrainingArguments(transformers.TrainingArguments):
             self.step_batch_size % self.step_per_device_batch_size == 0
         ), "`step_batch_size` is not a multiple of `step_per_device_batch_size`. "
 
-        os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
         if self.save_steps_extra is not None:
             self.save_steps_extra_list = [int(string) for string in self.save_steps_extra.split("__")]
         else:
             self.save_steps_extra_list = []
-
-        # policy_tokenizer left pads, since the policy requires batch decoding.
-        # reward_tokenizer also left pads, since we need the embedding of the right most non-pad token.
-        self.policy_tokenizer = _make_left_padded_tokenizer(self.policy_model_name_or_path)
-        self.reward_tokenizer = _make_left_padded_tokenizer(self.reward_model_name_or_path)
-
-        truncate_tokens = self.truncate_tokens
-        if truncate_tokens is None:
-            truncate_token_ids = None
-        else:
-            truncate_token_ids = self.reward_tokenizer.convert_tokens_to_ids(truncate_tokens)
-        self.truncate_token_ids = truncate_token_ids
 
     def set_accumulation_steps(self, num_processes: int):
         logger.warning(
@@ -161,3 +136,15 @@ class TrainingArguments(transformers.TrainingArguments):
             f"rollout_accumulation_steps: {self.rollout_accumulation_steps}, "
             f"gradient_accumulation_steps: {self.gradient_accumulation_steps}"
         )
+
+    def set_truncate_token_ids(self, tokenizer: transformers.PreTrainedTokenizer):
+        """Convert truncation token to token ids.
+
+        This is called in RLTrainer.
+        """
+        truncate_tokens = self.truncate_tokens
+        if truncate_tokens is None:
+            truncate_token_ids = None
+        else:
+            truncate_token_ids = tokenizer.convert_tokens_to_ids(truncate_tokens)
+        self.truncate_token_ids = truncate_token_ids

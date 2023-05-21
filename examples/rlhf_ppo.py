@@ -1,3 +1,5 @@
+import os
+
 import transformers
 from accelerate import DistributedDataParallelKwargs
 
@@ -9,6 +11,8 @@ logger = logging.get_logger(__name__)
 
 
 def main():
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
     parser = transformers.HfArgumentParser((DataArguments, TrainingArguments))
     data_args, training_args = parser.parse_args_into_dataclasses()
 

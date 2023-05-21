@@ -35,6 +35,7 @@ def get_logger(name: str, log_level: str = None):
     """
     Returns a `logging.Logger` for `name` that can handle multiprocessing.
 
+    **By default, the logger only logs on the main process -- the process with env var LOCAL_RANK=0.**
     If a log should be called on all processes, pass `main_process_only=False`
 
     Args:

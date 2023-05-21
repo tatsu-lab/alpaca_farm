@@ -13,7 +13,7 @@ from transformers.modeling_utils import unwrap_model
 
 from .. import accelerate_patch, common, constants, data_preprocessor, logging, torch_ops, utils
 from ..models import rl_models
-from ..types import LRScheduler, Tensor
+from ..types import AnyPath, AnyPathOrNone, LRScheduler, Tensor
 from . import rl_trainer
 
 logger = logging.get_logger(__name__)
@@ -29,6 +29,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
         policy: rl_models.ActorCritic,
         ref_policy: rl_models.Policy,
         reward_model,
+        tokenizer: transformers.PreTrainedTokenizer,
         accelerator: accelerate_patch.MyAccelerator,
         optimizer: Optional[torch.optim.Optimizer] = None,
         lr_scheduler: Optional[LRScheduler] = None,
@@ -41,6 +42,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
             policy=policy,
             ref_policy=ref_policy,
             reward_model=reward_model,
+            tokenizer=tokenizer,
             accelerator=accelerator,
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
@@ -55,7 +57,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
         non_score_rewards = -self.kl_ctl.value * kl
         shaped_rewards = non_score_rewards.clone()
         # This introduces a small index off by one bug if pad_token_id == eos_token_id.
-        terminal_positions = (responses != self.args.policy_tokenizer.pad_token_id).sum(dim=1) - 1
+        terminal_positions = (responses != self.tokenizer.pad_token_id).sum(dim=1) - 1
         shaped_rewards[list(range(rewards.size(0))), terminal_positions] += rewards
         return dict(shaped_rewards=shaped_rewards, non_score_rewards=non_score_rewards, kl=kl)
 
@@ -135,9 +137,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
 
             # Evaluate reward of the samples.
             text_queries, text_responses = tuple(
-                self.args.policy_tokenizer.batch_decode(
-                    tensor, skip_special_tokens=True, clean_up_tokenization_spaces=True
-                )
+                self.tokenizer.batch_decode(tensor, skip_special_tokens=True, clean_up_tokenization_spaces=True)
                 for tensor in (queries, responses)
             )
             del queries, responses  # Prevent mistakes.
@@ -148,7 +148,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
             # TODO(lxuechen): This response retokenization has issues with OPT, since the tokenizer always prepend
             #  <bos_token>. But the issue is local to post_reward, which isn't an issue if we don't penalize.
             sequences, responses = tuple(
-                self.args.reward_tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+                self.tokenizer(text, return_tensors="pt", padding=True, truncation=True)
                 for text in (text_sequences, text_responses)
             )
             sequences, responses = common.prepare_inputs((sequences, responses), device=self.accelerator.device)
@@ -284,7 +284,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
             if self.args.output_dir is not None:
                 # Store rollout data to disk to debug.
                 rollouts_to_disk = {
-                    key: self.args.policy_tokenizer.batch_decode(
+                    key: self.tokenizer.batch_decode(
                         tensor, skip_special_tokens=False, clean_up_tokenization_spaces=False
                     )
                     for key, tensor in common.unpack_dict(
@@ -308,7 +308,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
         output_dir = self.args.output_dir if output_dir is None else output_dir
         utils.makedirs(output_dir)
 
-        model, tokenizer = self.policy, self.args.policy_tokenizer
+        model, tokenizer = self.policy, self.tokenizer
         with FSDP.state_dict_type(
             model, StateDictType.FULL_STATE_DICT, FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
         ):
@@ -354,6 +354,15 @@ class PPOTrainer(rl_trainer.RLTrainer):
                     logger.fatal(f"Failed to give read-write access to {output_dir}: {e}")
 
 
+def _make_left_padded_tokenizer(
+    model_name_or_path: AnyPath, cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR
+) -> transformers.PreTrainedTokenizer:
+    tokenizer = transformers.AutoTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir, padding_side="left")
+    if tokenizer.pad_token is None:
+        tokenizer.add_special_tokens(dict(pad_token=constants.DEFAULT_PAD_TOKEN))
+    return tokenizer
+
+
 def make_model_module(
     args,
     accelerator: accelerate.Accelerator,
@@ -380,6 +389,16 @@ def make_model_module(
             device_map={"": accelerator.device},
         )
 
+    # Create tokenizer.
+    # policy_tokenizer left pads, since the policy requires batch decoding.
+    # reward_tokenizer also left pads, since we need the embedding of the right most non-pad token.
+    policy_tokenizer = _make_left_padded_tokenizer(args.policy_model_name_or_path)
+    reward_tokenizer = _make_left_padded_tokenizer(args.reward_model_name_or_path)
+
+    if policy_tokenizer.get_vocab() != reward_tokenizer.get_vocab():
+        raise ValueError("AlpacaFarm does not support different tokenizer for policy and reward models.")
+
+    # Create model.
     # Model construction below seems convoluted, but it's made to trade time for RAM efficiency.
     # For large models, object creation could be extremely RAM intensive.
     # Especially so for multiple processes on single node, each starting off with a copy of the model.
@@ -409,4 +428,4 @@ def make_model_module(
     reward_model.requires_grad_(False)
     reward_model = accelerator.prepare(reward_model)
 
-    return dict(policy=actor_critic, ref_policy=ref_policy, reward_model=reward_model)
+    return dict(policy=actor_critic, ref_policy=ref_policy, reward_model=reward_model, tokenizer=policy_tokenizer)

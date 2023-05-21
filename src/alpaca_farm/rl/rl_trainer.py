@@ -33,6 +33,7 @@ class RLTrainer(object):
         policy: nn.Module,
         ref_policy: nn.Module,
         reward_model: nn.Module,
+        tokenizer: transformers.PreTrainedTokenizer,
         accelerator: accelerate_patch.MyAccelerator,
         optimizer: Optional[torch.optim.Optimizer] = None,
         lr_scheduler: Optional[LRScheduler] = None,
@@ -45,11 +46,13 @@ class RLTrainer(object):
         self.policy = policy
         self.ref_policy = ref_policy
         self.reward_model = reward_model
+        self.tokenizer = tokenizer
         self.optimizer = optimizer
         self.accelerator = accelerator
         self.lr_scheduler = lr_scheduler
         self.kl_ctl = kl_controller.make_kl_controller(args, self.accelerator)
         self.log_history = []
+        self.args.set_truncate_token_ids(self.tokenizer)
         enable_full_determinism(self.args.seed) if self.args.full_determinism else set_seed(self.args.seed)
 
     @abc.abstractmethod
@@ -104,7 +107,7 @@ class RLTrainer(object):
         not be wrapped with `torch.no_grad` or `torch.enable_grad`!!!
         """
         if self.accelerator.distributed_type == DistributedType.FSDP:
-            inputs = self.args.policy_tokenizer("fsdp are you happy now? :)" * 50, return_tensors="pt")
+            inputs = self.tokenizer("fsdp are you happy now? :)" * 50, return_tensors="pt")
             inputs = common.prepare_inputs(inputs, device=self.accelerator.device)
             self.policy(inputs["input_ids"], inputs["attention_mask"], inputs["input_ids"])
 
@@ -223,7 +226,7 @@ class RLTrainer(object):
 
         outputs = decode.decode_prompts_with_huggingface_given_model(
             model=unwrapped_policy,
-            tokenizer=self.args.policy_tokenizer,
+            tokenizer=self.tokenizer,
             prompts=prompts,
             decoding_args=decode.HFDecodingArguments(max_new_tokens=self.args.response_len, temperature=temperature),
             per_device_batch_size=self.args.per_device_eval_batch_size,
@@ -232,7 +235,7 @@ class RLTrainer(object):
         sequences = [i + o for i, o in utils.zip_(prompts, outputs)]
         rewards = score.score_sequences_with_huggingface_given_model(
             model=self.reward_model,
-            tokenizer=self.args.reward_tokenizer,
+            tokenizer=self.tokenizer,
             sequences=sequences,
             per_device_batch_size=self.args.rollout_per_device_batch_size,
             divide_work=False,
