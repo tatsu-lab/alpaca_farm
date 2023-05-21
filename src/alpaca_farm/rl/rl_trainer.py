@@ -177,7 +177,7 @@ class RLTrainer(object):
         ):
             if step_idx % self.args.save_steps == 0 or step_idx in self.args.save_steps_extra_list:
                 self.save_model(self.args.output_dir + f"_ckpt_{step_idx}")
-            if step_idx % self.args.eval_steps == 0:
+            if self.args.eval_steps is not None and step_idx % self.args.eval_steps == 0:
                 self.evaluate(step_idx)
             self.log_history.append(self.step(infinite_train_dataloader, step_idx))
         return self.log_history
