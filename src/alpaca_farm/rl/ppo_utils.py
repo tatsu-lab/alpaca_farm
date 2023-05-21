@@ -1,4 +1,3 @@
-# TODO: Rename this file. So far only PPO specific.
 import os
 import pathlib
 import sys
@@ -14,10 +13,10 @@ from ..types import AnyPath, AnyPathOrNone
 logger = logging.get_logger(__name__)
 
 
-def _make_tokenizer(
+def _make_left_padded_tokenizer(
     model_name_or_path: AnyPath, cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR
 ) -> transformers.PreTrainedTokenizer:
-    tokenizer = transformers.AutoTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir, padding_side="left")
     if tokenizer.pad_token is None:
         tokenizer.add_special_tokens(dict(pad_token=constants.DEFAULT_PAD_TOKEN))
     return tokenizer
@@ -115,15 +114,10 @@ class TrainingArguments(transformers.TrainingArguments):
         else:
             self.save_steps_extra_list = []
 
-        # TODO: refactor this ---
-        self.policy_tokenizer = _make_tokenizer(self.policy_model_name_or_path)
-        self.reward_tokenizer = _make_tokenizer(self.reward_model_name_or_path)
-
         # policy_tokenizer left pads, since the policy requires batch decoding.
         # reward_tokenizer also left pads, since we need the embedding of the right most non-pad token.
-        self.policy_tokenizer.padding_side = "left"
-        self.reward_tokenizer.padding_side = "left"
-        # ---
+        self.policy_tokenizer = _make_left_padded_tokenizer(self.policy_model_name_or_path)
+        self.reward_tokenizer = _make_left_padded_tokenizer(self.reward_model_name_or_path)
 
         truncate_tokens = self.truncate_tokens
         if truncate_tokens is None:
