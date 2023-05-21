@@ -19,29 +19,6 @@ from .types import LRScheduler, Tensor
 logger = logging.get_logger(__name__)
 
 
-class ActorCritic(nn.Module):
-    def __init__(self, policy: rl_models.Policy, value_model: rl_models.Value):
-        super(ActorCritic, self).__init__()
-        self.policy = policy
-        self.value_model = value_model
-
-    def forward(
-        self,
-        queries: Tensor,
-        query_attn_masks: Tensor,
-        responses: Tensor,
-        temperature: Optional[float] = None,
-    ) -> Dict[str, Tensor]:
-        o1 = self.policy(queries, query_attn_masks, responses, temperature)
-        o2 = self.value_model(queries, query_attn_masks, responses)
-        return {**o1, **o2}
-
-    def respond(
-        self, queries: Tensor, query_attn_masks: Tensor, temperature: Optional[float] = None
-    ) -> Dict[str, Tensor]:
-        return self.policy.respond(queries=queries, query_attn_masks=query_attn_masks, temperature=temperature)
-
-
 class PPOTrainer(trainer_rl.RLTrainer):
     def __init__(
         self,
@@ -49,7 +26,7 @@ class PPOTrainer(trainer_rl.RLTrainer):
         train_dataset: data_preprocessor.QueryResponseDataset,
         eval_dataset: data_preprocessor.QueryResponseDataset,
         data_collator: Callable,
-        policy: ActorCritic,
+        policy: rl_models.ActorCritic,
         ref_policy: rl_models.Policy,
         reward_model,
         accelerator: accelerate_patch.MyAccelerator,
@@ -377,10 +354,10 @@ class PPOTrainer(trainer_rl.RLTrainer):
                     logger.fatal(f"Failed to give read-write access to {output_dir}: {e}")
 
 
-def make_model_components(
+def make_model_module(
     args,
     accelerator: accelerate.Accelerator,
-):
+) -> dict:
     def make_generative_policy():
         base_model = common.make_generative_lm(
             model_name_or_path=args.policy_model_name_or_path,
@@ -411,13 +388,13 @@ def make_model_components(
     policy = rl_models.make_policy_with_base_model(base_model=make_generative_policy(), args=args)
     if args.init_value_with_reward:
         # Initialize value from reward model a la OAI.
-        logger.warning("Initializing value model with reward model.", main_process_only=True)
+        logger.warning("Initializing value model with reward model.")
         value_model = rl_models.make_value_with_base_model(base_model=make_reward_model().backbone_model, args=args)
     else:
-        logger.warning("Initializing value model with policy model.", main_process_only=True)
+        logger.warning("Initializing value model with policy model.")
         # Initialize value from policy. Works for sanity, but generally performs worse in instruction-following.
         value_model = rl_models.make_value_with_base_model(base_model=make_generative_policy(), args=args)
-    actor_critic = ActorCritic(policy=policy, value_model=value_model)
+    actor_critic = rl_models.ActorCritic(policy=policy, value_model=value_model)
     # We cast how respond should run. It's important the dtypes be consistent with training, since a bf16
     # fine-tuned model might not work with fp16 inference.
     # Cast step below must precede accelerator.prepare(), since wrapped model might not have `respond` method.

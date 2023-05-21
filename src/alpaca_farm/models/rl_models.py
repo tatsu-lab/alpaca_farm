@@ -150,6 +150,30 @@ class AutoregressiveValue(Value):
         return dict(values=values)
 
 
+class ActorCritic(nn.Module):
+    def __init__(self, policy: Policy, value_model: Value):
+        super(ActorCritic, self).__init__()
+        self.policy = policy
+        self.value_model = value_model
+
+    def forward(
+        self,
+        queries: Tensor,
+        query_attn_masks: Tensor,
+        responses: Tensor,
+        temperature: Optional[float] = None,
+    ) -> Dict[str, Tensor]:
+        # Assume the policy and value model share the same tokenizer.
+        o1 = self.policy(queries, query_attn_masks, responses, temperature)
+        o2 = self.value_model(queries, query_attn_masks, responses)
+        return {**o1, **o2}
+
+    def respond(
+        self, queries: Tensor, query_attn_masks: Tensor, temperature: Optional[float] = None
+    ) -> Dict[str, Tensor]:
+        return self.policy.respond(queries=queries, query_attn_masks=query_attn_masks, temperature=temperature)
+
+
 def make_policy_with_base_model(base_model: transformers.PreTrainedModel, args) -> Policy:
     if base_model.config.is_encoder_decoder:
         raise NotImplementedError
