@@ -369,7 +369,7 @@ def cast_with_native_amp(func: Callable, mixed_precision: Optional[str] = None) 
 def prepare_model_for_custom_fn(model: nn.Module, fn_name: str, accelerator: accelerate.Accelerator) -> nn.Module:
     """Wrap a custom function of a model with the right mixed precision context.
 
-    This function should be run a *raw* model, i.e., before wrapped into DDP or FSDP.
+    This function should be run on *raw* model, i.e., before wrapped into DDP or FSDP.
     """
     if accelerator.native_amp:
         # Store original function.
