@@ -261,9 +261,12 @@ class SFTDataset(Dataset):
         df: pd.DataFrame,
         prompt_dict: dict,
         tokenizer: transformers.PreTrainedTokenizer,
+        df_postprocessor: Optional[Callable] = None,
     ):
         super(SFTDataset, self).__init__()
-        data_dict = preprocess_for_sft(df=df, prompt_dict=prompt_dict, tokenizer=tokenizer)
+        data_dict = preprocess_for_sft(
+            df=df, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor
+        )
         self.input_ids = data_dict["input_ids"]
         self.labels = data_dict["labels"]
         self.metadata = data_dict["metadata"]
@@ -300,7 +303,7 @@ class BinaryRewardModelingDataset(Dataset):
         self,
         df: pd.DataFrame,
         prompt_dict: dict,
-        tokenizer: Optional[transformers.PreTrainedTokenizer] = None,
+        tokenizer: transformers.PreTrainedTokenizer,
         df_postprocessor: Optional[Callable] = None,
         end_sequence_with_eos: bool = False,
     ):
@@ -378,3 +381,60 @@ class DataCollatorForBinaryRewardModelingDataset(object):
             index_1=index_1,
             choice=choice,
         )
+
+
+class QueryResponseDataset(Dataset):
+    """Dataset that emits tokenized left-padded queries."""
+
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        prompt_dict: dict,
+        tokenizer: transformers.PreTrainedTokenizer,
+        query_len: int,
+        df_postprocessor: Optional[Callable] = None,
+    ):
+        super(QueryResponseDataset, self).__init__()
+
+        if df_postprocessor is not None:
+            df = df_postprocessor(df)
+        list_dict_data = df.to_dict(orient="records")
+
+        # prompts are strings; queries are tensors.
+        prompts = [format_prompt(example=dict_data, prompt_dict=prompt_dict) for dict_data in list_dict_data]
+        queries = [
+            tokenizer(prompt, return_tensors="pt", truncation=False).input_ids.squeeze(dim=0) for prompt in prompts
+        ]
+
+        filtered_queries = [query for query in queries if len(query) <= query_len]
+        logger.warning(
+            f"Filtered out {len(queries) - len(filtered_queries)} instances out of {len(queries)} that "
+            f"exceed length limit. These examples are not used for training, but will still be used in evaluation. "
+        )
+
+        queries = torch.stack(
+            [
+                torch_ops.left_pad(query, target_size=(query_len,), value=tokenizer.pad_token_id)
+                for query in filtered_queries
+            ]
+        )
+
+        self.queries = queries
+        self.query_attn_masks = queries.ne(tokenizer.pad_token_id).long()
+
+        # Auxiliary data.
+        self.prompts = prompts
+        self.list_dict_data = list_dict_data
+
+    def __getitem__(self, i):
+        return_dict = dict(queries=self.queries[i], query_attn_masks=self.query_attn_masks[i])
+        return return_dict
+
+    def __len__(self):
+        return len(self.queries)
+
+
+@dataclasses.dataclass
+class DataCollatorForQueryResponseDataset(object):
+    def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
+        return {key: torch.stack([instance[key] for instance in instances]) for key in instances[0].keys()}

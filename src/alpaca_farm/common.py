@@ -1,4 +1,3 @@
-# maps to common.py
 import os
 import time
 import types
@@ -6,12 +5,12 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 
+import accelerate
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 import transformers
 from accelerate.utils import convert_outputs_to_fp32, is_torch_version
-from torch import Tensor, nn
+from torch import nn
 from torch.distributed.fsdp import FullStateDictConfig
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import StateDictType
@@ -209,6 +208,22 @@ def safe_save_model_for_hf_trainer(
         logger.warning(f"Saving model took {time.perf_counter() - now:.2f} seconds.")
 
 
+def flatten_dict(nested, sep=".", postprocess_fn=lambda *args: args):
+    def rec(nest, prefix, into):
+        for k, v in nest.items():
+            if sep in k:
+                raise ValueError(f"separator '{sep}' not allowed to be in key '{k}'")
+            if isinstance(v, dict):  # collections.Mapping fails in py3.10.
+                rec(v, prefix + k + sep, into)
+            else:
+                v = postprocess_fn(v)
+                into[prefix + k] = v
+
+    flat = {}
+    rec(nested, "", flat)
+    return flat
+
+
 def unpack_dict(d: Dict, keys: Sequence[str], return_type: type = tuple) -> Union[Sequence, Dict]:
     if return_type in (tuple, list):
         return return_type(d[key] for key in keys)
@@ -218,7 +233,7 @@ def unpack_dict(d: Dict, keys: Sequence[str], return_type: type = tuple) -> Unio
         raise ValueError(f"Unknown return_type: {return_type}")
 
 
-def merge_dicts(dicts: Sequence[dict], merge_fn: Callable = lambda *args: args) -> dict:
+def merge_dict(dicts: Sequence[dict], merge_fn: Callable = lambda *args: args) -> dict:
     """Merge a sequence of dicts (with the same set of keys) into a single dict."""
     if len(dicts) == 0:
         return dict()
@@ -326,36 +341,14 @@ def get_transformer_hidden_size(model: transformers.PreTrainedModel):
     return getattr(model.config, hidden_size_attr_name)
 
 
-# TODO(lxuechen): Refactor like HF
-def prepare_inputs(
-    data: Union[torch.Tensor, Any],
-    device: Union[str, int, torch.device],
-) -> Union[torch.Tensor, Any]:
+def prepare_inputs(data: Union[torch.Tensor, Any], device: Union[str, int, torch.device]) -> Union[torch.Tensor, Any]:
     if isinstance(data, Mapping):
-        return type(data)({k: prepare_inputs(v, device) for k, v in data.items()})
+        return type(data)({k: prepare_inputs(v, device) for k, v in data.items()})  # noqa
     elif isinstance(data, (tuple, list)):
         return type(data)(prepare_inputs(v, device) for v in data)
     elif isinstance(data, torch.Tensor):
-        return data.to(device)
+        return data.to(device)  # This can break with deepspeed.
     return data
-
-
-def pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0, left=True):
-    current_size = inputs.size()
-    diffs = tuple(ti - ci for ti, ci in utils.zip_(target_size, current_size))
-    pad_params = []
-    for diff in diffs:
-        pad_params = ([diff, 0] if left else [0, diff]) + pad_params
-    res = F.pad(inputs, pad=pad_params, value=value)
-    return res
-
-
-def left_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
-    return pad(inputs=inputs, target_size=target_size, value=value, left=True)
-
-
-def right_pad(inputs: Tensor, target_size: Union[torch.Size, Sequence[int]], value=0.0):
-    return pad(inputs=inputs, target_size=target_size, value=value, left=False)
 
 
 def cast_with_native_amp(func: Callable, mixed_precision: Optional[str] = None) -> Callable:
@@ -371,3 +364,20 @@ def cast_with_native_amp(func: Callable, mixed_precision: Optional[str] = None) 
         output_func = torch.autocast(device_type=device_type, dtype=torch.bfloat16)(func)
     output_func = convert_outputs_to_fp32(output_func)
     return output_func
+
+
+def prepare_model_for_custom_fn(model: nn.Module, fn_name: str, accelerator: accelerate.Accelerator) -> nn.Module:
+    """Wrap a custom function of a model with the right mixed precision context.
+
+    This function should be run a *raw* model, i.e., before wrapped into DDP or FSDP.
+    """
+    if accelerator.native_amp:
+        # Store original function.
+        original_fn_name = f"_original_{fn_name}"
+        original_fn = getattr(model, fn_name)
+        setattr(model, original_fn_name, original_fn)
+
+        # New set function.
+        wrapped_fn = cast_with_native_amp(original_fn, mixed_precision=accelerator.mixed_precision)
+        setattr(model, fn_name, wrapped_fn)
+    return model

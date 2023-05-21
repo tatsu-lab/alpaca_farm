@@ -8,13 +8,12 @@ import tqdm
 import transformers
 from accelerate import DistributedType
 from accelerate.optimizer import AcceleratedOptimizer
-from ml_swissknife import utils
 from torch import nn
 from torch.distributed.fsdp import ShardingStrategy
 from torch.utils.data import DataLoader, TensorDataset
 from transformers.trainer_utils import enable_full_determinism, set_seed
 
-from . import accelerate_patch, common, logging, rl_utils
+from . import accelerate_patch, common, data_preprocessor, logging, rl_utils, utils
 from .inference import decode, score
 from .types import LRScheduler, Tensor
 
@@ -27,8 +26,8 @@ class RLTrainer(object):
     def __init__(
         self,
         args,
-        train_dataset: data_utils.QueryResponseDataset,
-        eval_dataset: data_utils.QueryResponseDataset,
+        train_dataset: data_preprocessor.QueryResponseDataset,
+        eval_dataset: data_preprocessor.QueryResponseDataset,
         data_collator: Callable,
         policy: nn.Module,
         ref_policy: nn.Module,
@@ -131,7 +130,7 @@ class RLTrainer(object):
                         stats_list.append(stats_for_this_step)
                     self.optimizer.step()
                     self.policy.zero_grad(set_to_none=True)
-        return common.merge_dicts(stats_list, torch.stack)  # list of dict -> dict: str -> 1-D tensor
+        return common.merge_dict(stats_list, torch.stack)  # list of dict -> dict: str -> 1-D tensor
 
     def step(self, train_dataloader, step_idx: int):
         queries_batches = [next(train_dataloader) for _ in range(self.args.rollout_accumulation_steps)]
@@ -201,14 +200,10 @@ class RLTrainer(object):
         FSDP compat: all devices should do the forward pass, since sharded params need to be summoned.
                      only write results in the main process.
         """
-        logger.warning(f"start evaluate at step: {step_idx}", main_process_only=True)
+        logger.warning(f"Start evaluation at step: {step_idx}", main_process_only=True)
 
-        prompts, list_dict_data, metadata = (
-            self.eval_dataset.prompts,
-            self.eval_dataset.list_dict_data,
-            self.eval_dataset.metadata,
-        )
-        if any(item is None for item in (prompts, list_dict_data, metadata)):
+        prompts, list_dict_data = self.eval_dataset.prompts, self.eval_dataset.list_dict_data
+        if any(item is None for item in (prompts, list_dict_data)):
             logger.warning("No evaluation data, skipping evaluation.", main_process_only=True)
             return
 
@@ -216,7 +211,6 @@ class RLTrainer(object):
         model_name = Path(self.args.output_dir).stem  # Don't use the helper in common, as no checkpoint is saved yet.
         model_name_at_step = f"{model_name}_ckpt_{step_idx}"
         temperature = 0.7
-        sample_mode = f"temp={temperature},top_p=1.0,max_new_tokens={self.args.response_len}"
         del model_name
 
         # Start evaluation.
@@ -251,7 +245,7 @@ class RLTrainer(object):
             if self.args.output_dir is not None:
                 utils.jdump(results, utils.join(self.args.output_dir, f"eval_results_{step_idx}.json"))
 
-            logger.warning(f"end evaluate at step: {step_idx}. processed {len(results)} examples")
+            logger.warning(f"End evaluation at step: {step_idx}. Processed {len(results)} examples")
 
     @abc.abstractmethod
     @torch.inference_mode()

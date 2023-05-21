@@ -1,4 +1,3 @@
-# maps to ml_swissknife/utils.py
 import argparse
 import functools
 import io
@@ -10,20 +9,29 @@ from typing import Callable, Optional, Sequence, Union
 import numpy as np
 import torch
 import transformers
+from torch.utils.data import DataLoader
 
 from . import logging
 from .types import Numeric
 
 logger = logging.get_logger(__name__)
 
+home = os.path.expanduser("~")
+home_data = os.path.join(home, "data")
+join = os.path.join
+pathexists = os.path.exists
 makedirs = functools.partial(os.makedirs, exist_ok=True)
+dirname = os.path.dirname
+basename = os.path.basename
 
 
 def alleq(l: Sequence, f: Optional[Callable] = lambda x, y: x == y):
     """Check all arguments in a sequence are equal according to a given criterion.
+
     Args:
         f: A bi-variate boolean function.
         l: A list/tuple.
+
     Returns:
         True if everything is equal; otherwise False.
     """
@@ -85,13 +93,6 @@ def jdumps(obj, indent=4, default=str):
     return json.dumps(obj, indent=indent, default=default)
 
 
-def flatten_nested_pystruct(sequence: Sequence):
-    """Flatten nested python list/tuple/set and return a list of elements."""
-    if not isinstance(sequence, (tuple, list, set)):
-        return [sequence]
-    return [i for entry in sequence for i in flatten_nested_pystruct(entry)]
-
-
 def mean(*seqs: Sequence[Numeric]) -> Union[Numeric, Sequence[Numeric]]:
     singleton = len(seqs) == 1
     means = [float(np.mean(seq)) for seq in seqs]
@@ -151,5 +152,21 @@ def manual_seed(args_or_seed: Union[int, argparse.Namespace], fix_cudnn=False):
     torch.cuda.manual_seed_all(args_or_seed)
     os.environ["PYTHONHASHSEED"] = str(args_or_seed)
     if fix_cudnn:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True  # noqa
+        torch.backends.cudnn.benchmark = False  # noqa
+
+
+class InfiniteLoader(object):
+    """Wraps an existing loader so that it outputs stuff indefinitely; useful for semi-supervised learning."""
+
+    def __init__(self, loader: DataLoader):
+        super(InfiniteLoader, self).__init__()
+        self.loader = loader
+        self.iterator = iter(loader)
+
+    def __next__(self):
+        try:
+            return next(self.iterator)
+        except StopIteration:
+            self.iterator = iter(self.loader)
+            return next(self.iterator)
