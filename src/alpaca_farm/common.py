@@ -8,10 +8,9 @@ from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Union
 import accelerate
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 import transformers
 from accelerate.utils import convert_outputs_to_fp32, is_torch_version
-from torch import Tensor, nn
+from torch import nn
 from torch.distributed.fsdp import FullStateDictConfig
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import StateDictType
@@ -342,17 +341,13 @@ def get_transformer_hidden_size(model: transformers.PreTrainedModel):
     return getattr(model.config, hidden_size_attr_name)
 
 
-# TODO(lxuechen): Refactor like HF
-def prepare_inputs(
-    data: Union[torch.Tensor, Any],
-    device: Union[str, int, torch.device],
-) -> Union[torch.Tensor, Any]:
+def prepare_inputs(data: Union[torch.Tensor, Any], device: Union[str, int, torch.device]) -> Union[torch.Tensor, Any]:
     if isinstance(data, Mapping):
-        return type(data)({k: prepare_inputs(v, device) for k, v in data.items()})
+        return type(data)({k: prepare_inputs(v, device) for k, v in data.items()})  # noqa
     elif isinstance(data, (tuple, list)):
         return type(data)(prepare_inputs(v, device) for v in data)
     elif isinstance(data, torch.Tensor):
-        return data.to(device)
+        return data.to(device)  # This can break with deepspeed.
     return data
 
 
