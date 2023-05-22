@@ -20,8 +20,7 @@ from typing import List, Literal
 
 import transformers
 
-from alpaca_farm import common, constants, data_postprocessor, data_utils, logging
-from alpaca_farm.auto_feedback import convert
+from alpaca_farm import common, constants, data_utils, logging
 from alpaca_farm.models import reward_model
 from alpaca_farm.reward_modeling_trainer import Trainer, compute_reward_modeling_metrics
 
@@ -51,26 +50,6 @@ class DataArguments:
         default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
     )
-    convert_ordinal_to_preference: bool = field(
-        default=False,
-        metadata={
-            "help": "Whether to convert ordinal preferences to pairwise preferences. "
-            "Used to convert human preference data from A/a/b/B format to pairwise."
-        },
-    )
-    num_categories: int = field(default=4, metadata={"help": "Number of categories in the original preference data."})
-
-    def __post_init__(self):
-        train_df_postprocessor = []
-        eval_df_postprocessor = []
-
-        if self.convert_ordinal_to_preference:
-            # TODO: simplify.
-            train_df_postprocessor.append(convert.LogprobsColumnPatch(self.num_categories))
-            train_df_postprocessor.append(convert.convert_ordinal_to_preference)
-
-        self.train_df_postprocessor = data_postprocessor.SequentialPostProcessor(train_df_postprocessor)
-        self.eval_df_postprocessor = data_postprocessor.SequentialPostProcessor(eval_df_postprocessor)
 
 
 @dataclass

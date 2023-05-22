@@ -26,6 +26,4 @@ torchrun --nproc_per_node=8 --master_port=1234 examples/reward_modeling.py \
   --fsdp_transformer_layer_cls_to_wrap "LlamaDecoderLayer" \
   --tf32 True \
   --flash_attn True \
-  --ddp_timeout 1800 \
-  --end_sequence_with_eos False \
-  --convert_ordinal_to_preference True
+  --ddp_timeout 1800
