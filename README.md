@@ -6,9 +6,9 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Research and development on instruction-following models with human feedback is difficult because methods that learn
-from human feedback
-are costly and complex.
-Stanford AlpacaFarm is a simulator that enables research and development for learning from feedback at a low cost.
+from human feedback like [RLHF](https://arxiv.org/abs/2203.02155) are costly to run and complex to analyze.
+Stanford AlpacaFarm is a simulator that enables research and development for learning from feedback at a low cost,
+enabling research on instruction following and alignment to advance.
 
 This repo contains code for
 
@@ -16,17 +16,24 @@ This repo contains code for
 - automated evaluation of instruction-following models
 - reference implementations of baseline methods
 
-<br>
-<p style="text-align:center;">
-  <img style="max-width:80%; height:auto;" src="./assets/fig1.jpg" alt="Workflow">
-</p>
-
 **Usage and License Notices**: Alpaca is intended and licensed for research use only. The dataset is CC BY NC 4.0 (
 allowing only non-commercial use) and models trained using the dataset should not be used outside of research purposes.
 The weight diff is also CC BY NC 4.0 (allowing only non-commercial use).
 
-## Overall
-TODO: this part should detail the model development process. the three components.
+## The AlpacaFarm
+
+<br>
+<p style="text-align:center;">
+  <img style="max-width:70%; height:auto;" src="./assets/fig1.jpg" alt="Workflow">
+</p>
+
+Instruction-following models are typically developed in 3 steps
+1. Supervised fine-tuning with demonstrations
+2. Learning from human feedback; usually pairwise preferences
+3. Human evaluation with interaction
+
+The goal of AlpacaFarm is to provide three key components that enable rapid research and development of instruction following models: 
+low-cost pairwise feedback generators, automated evaluations for methods development, and reference implementations for comparison and modification. 
 
 ## Installation
 
