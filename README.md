@@ -5,16 +5,15 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Research and development on instruction-following models with human feedback is difficult because methods that learn
-from human feedback like [RLHF](https://arxiv.org/abs/2203.02155) are costly to run and complex to analyze.
-Stanford AlpacaFarm is a simulator that enables research and development for learning from feedback at a low cost,
-enabling research on instruction following and alignment to advance.
+Research and development on learning from human feedback is difficult because methods like [RLHF](https://arxiv.org/abs/2203.02155) are costly to run and complex to analyze.
+Stanford AlpacaFarm is a simulator that enables research and development on learning from feedback at a fraction of the usual cost,
+promoting accessible research on instruction following and alignment.
 
 This repo contains code for
 
-- simulating preference feedback from language models
-- automated evaluation of instruction-following models
-- reference implementations of baseline methods
+- [simulating preference feedback from language models](#simulating-pairwise-preference)
+- [automated evaluation of instruction-following models](#running-automatic-evaluation)
+- [reference implementations of baseline methods](#running-reference-methods)
 
 **Usage and License Notices**: Alpaca is intended and licensed for research use only. The dataset is CC BY NC 4.0 (
 allowing only non-commercial use) and models trained using the dataset should not be used outside of research purposes.
