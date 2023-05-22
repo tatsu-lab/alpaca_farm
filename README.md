@@ -71,11 +71,10 @@ packages.
     ```
 </details>
 
-To get started either go through the colab notebook above or run one of the two following commands depending on the format of your data.
+To get started and annotate the pairs of outputs of your model use the following code. For more details or functions to use if you have outputs in different formats refer to [annotator README]() or  the notebook above.
 
-<details>
-<summary><b>Annotating list of pairs of outputs</b></summary>
-<pre><code class="python">
+
+```python
 from alpaca_farm.auto_annotations import PairwiseAutoAnnotator
 from alpaca_farm.utils import jload
 
@@ -87,7 +86,7 @@ print(outputs_pairs[-1:])
 #   'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
 #   'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]"}]
 
-annotator = PairwiseAutoAnnotator()
+annotator = PairwiseAutoAnnotator(saving_path="auto_annotations.json")
 annotated = annotator.annotate_pairs(outputs_pairs)
 
 print(annotated[-1:])
@@ -97,43 +96,55 @@ print(annotated[-1:])
 #   'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
 #   'annotator': 'davinci003_3',
 #   'preference': 1.0}]
-</code></pre>
-</details>
+```
 
+
+## Running Automatic Evaluation
 
 <details>
-<summary><b>Annotating list of output samples (not pairs)</b></summary>
+  <summary><b>Installing evaluation with minimal dependencies</b></summary>
+    To install only the auto annotators with minimal additional packages use the following
+    
+    ```
+    MINIMAL_DEPENDENCIES=1
+    pip install alpacafarm[evaluation]
+    ```
+</details>
+
+TODO: add decoding from baseline
+
+To get started and annotate the pairs of outputs of your model use the following code. For more details or functions to use if you have outputs in different formats refer to [annotator README]() or  the notebook above.
+
+
 ```python
 from alpaca_farm.auto_annotations import PairwiseAutoAnnotator
 from alpaca_farm.utils import jload
 
 # load some data
-outputs_samples = jload("examples/data/multisamples_sft.json")[:3]
-print(outputs_samples)
-# ([{'instruction': 'Why is it important to save money?',)
-# (  'input': '',)
-# (  'output': 'Saving money is important because it allows you to have financial security in case of emergencies; to be able to afford the things you need; to have money for retirement; and to be able to afford the lifestyle you want. Saving money can also help you build wealth and reach your financial goals. It is important to develop the habit of regularly putting money aside for savings.'},)
-# ( {'instruction': 'Why is it important to save money?',)
-# (  'input': '',)
-# (  'output': 'It is important to save money because it can help create a financial cushion in case of an emergency, allow you to pursue goals, and give you more financial security. Having a savings can also give you the opportunity to make more money by investing it. Saving money can also help you prepare for big expenditures, such as buying a car or a house.'},)
-# ( {'instruction': 'Why is it important to save money?',)
-# (  'input': '',)
-# (  'output': 'Saving money is important because it provides financial security and allows for the purchase of large-ticket items, such as a car or house, or for emergency situations. It also helps to create financial independence and allows for more flexibility in life, such as taking unpaid time off from work or retiring early. Having money saved also provides peace of mind, knowing that one is prepared for any unexpected events.'}])
+outputs_baseline = jload("examples/data/outputs_baseline.json")[:6]
+print(outputs_baseline[-1:])
+# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
+#   'input': '',
+#   'output': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]"}]
+
+outputs_rlhf = jload("examples/data/outputs_rlhf.json")[:6]
+print(outputs_rlhf[-1:])
+# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
+#   'input': '',
+#   'output': 'Dear Friends, \n\nI am writing to invite you all to a dinner on Friday evening. It is a casual affair, and I am looking forward to a fun evening catching up with you all. I am planning to make a selection of delicious dishes, ranging from appetizers to mains and desserts. There will be something for everyone to enjoy, and I am sure it will be a night to remember.\n\nThe dinner will be held at my place on Friday, April 17th at 7pm. If you are interested in joining me, please RSVP to this email by Thursday, April 16th. I am looking forward to seeing you all there! \n\nThank you, \n\n[Name]'}]
 
 annotator = PairwiseAutoAnnotator()
-annotated = annotator.annotate_samples(outputs_samples)
+annotated = annotator.annotate_head2head(outputs_1=outputs_baseline, outputs_2=outputs_rlhf,                 saving_path="auto_annotations.json")
 
-print(annotated)
-[{'instruction': 'Why is it important to save money?',
+print(annotated[-1:])
+# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
 #   'input': '',
-#   'output_1': 'Saving money is important because it allows you to have financial security in case of emergencies; to be able to afford the things you need; to have money for retirement; and to be able to afford the lifestyle you want. Saving money can also help you build wealth and reach your financial goals. It is important to develop the habit of regularly putting money aside for savings.',
-#   'output_2': 'Saving money is important because it provides financial security and allows for the purchase of large-ticket items, such as a car or house, or for emergency situations. It also helps to create financial independence and allows for more flexibility in life, such as taking unpaid time off from work or retiring early. Having money saved also provides peace of mind, knowing that one is prepared for any unexpected events.',
+#   'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
+#   'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
 #   'annotator': 'davinci003_3',
 #   'preference': 1.0}]
 ```
-</details>
 
-## Running Automatic Evaluation
 
 ## Running Reference Methods
 
