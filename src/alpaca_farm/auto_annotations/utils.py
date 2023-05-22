@@ -201,3 +201,55 @@ def make_prompts(
         prompts.append(current_prompt)
 
     return prompts, df_out
+
+
+def convert_ordinal_to_binary_preference(preferences : Union[pd.DataFrame, list[dict[str, Any]]],
+                                  ordinal_preference_key : str="preference",
+                                  binary_preference_key: str="preference"):
+    """Convert ordinal preference annotations to preference annotations. By merging multiple subcategories together,
+    eg A/a/b/B into A/B, or AA/A/a/b/B/BB into A/B.
+
+    Parameters
+    ----------
+    preferences : pd.DataFrame or list of dicts
+        List of dictionaries or a dataframe that contains ordinal preference A/a/b/B in ordinal_preference_key.
+
+    ordinal_preference_key : str
+        Key in the dictionaries or column name of the ordinal preference annotations.
+
+    binary_preference_key : str
+        Key in the dictionaries or column name of the binary preference annotations. This can be the same
+        as ordinal_preference_key if you want to overwrite the ordinal preference annotations.
+
+    Returns
+    -------
+    binary_preferences
+        List of dictionary or a dataframe (same type as the input) that contains binary preferences A/B in
+        binary_preference_key.
+
+    Examples
+    --------
+    >>> preferences = [dict(output="test A", preference=1),
+                        dict(output="test a", preference=2),
+                        dict(output="test b", preference=3),
+                        dict(output="test B", preference=4),
+                        dict(output="test None", preference=0)]
+    >>> convert_ordinal_to_binary_preference(preferences, ordinal_preference_key="preference", binary_preference_key="preference")
+    [{'output': 'test A', 'preference': 1},
+     {'output': 'test a', 'preference': 1},
+     {'output': 'test b', 'preference': 2},
+     {'output': 'test B', 'preference': 2},
+     {'output': 'test None', 'preference': 0}]
+    """
+    if isinstance(preferences, pd.DataFrame):
+        is_df = True
+    else:
+        is_df = False
+        preferences = pd.DataFrame.from_records(preferences)
+
+    preferences[binary_preference_key] = (preferences[ordinal_preference_key].round().astype(int) -1) // 2 + 1
+
+    if not is_df:
+        preferences = preferences.to_dict(orient="records")
+
+    return preferences
