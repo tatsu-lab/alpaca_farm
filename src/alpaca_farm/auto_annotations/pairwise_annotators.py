@@ -15,6 +15,8 @@ from . import decoders, utils as ann_utils
 CURRENT_DIR = Path(__file__).parent
 logging.getLogger().setLevel(logging.INFO)
 
+__all__ = ["PairwiseAutoAnnotator"]
+
 
 class PairwiseAutoAnnotator:
     """Class for a pool of annotators.
