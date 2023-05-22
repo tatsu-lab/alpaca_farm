@@ -14,9 +14,10 @@ accelerate launch --config_file "${config_file}" examples/rlhf_ppo.py \
   --init_value_with_reward True \
   --rollout_batch_size 512 \
   --step_batch_size 256 \
-  --learning_rate 3e-6 \
+  --learning_rate 1e-5 \
   --warmup_steps 5 \
-  --kl_coef 0.02 \
+  --kl_coef 0.002 \
   --total_epochs 10 \
   --flash_attn True \
-  --prompt_dict_path "./examples/prompts/v0_inputs_noinputs.json"
+  --prompt_dict_path "./examples/prompts/v0_inputs_noinputs.json" \
+  --save_steps 20
