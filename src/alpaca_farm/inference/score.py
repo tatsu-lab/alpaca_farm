@@ -154,8 +154,8 @@ def rerank_sequences_with_huggingface(
         rerank_top_k: The number of top samples to return.
         per_device_batch_size: The batch size per device for evaluating rewards.
         cache_dir: The directory to cache the huggingface model.
-        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         max_instances: The maximum number of prompts to rerank.
+        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
         flash_attn: Turns on flash_attn for the reward model if True.
 
