@@ -6,15 +6,48 @@ import pandas as pd
 from alpaca_farm import constants
 from alpaca_farm.auto_annotations import PairwiseAutoAnnotator
 from alpaca_farm.auto_annotations.analysis import head2head_to_metrics
-from alpaca_farm.types import AnyData, AnyPath
-
-PRECOMPUTED_LEADERBOARD = {"annotators/annotator_pool_v0/configs.yaml": dict()}
+from . import utils as ann_utils
 
 __all__ = ["alpaca_leaderboard"]
 
+PRECOMPUTED_LEADERBOARD = {"annotators/annotator_pool_v0/configs.yaml":{
+"rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20":  {'n_draws': 9.0,
+ 'n_total': 803.0,
+ 'n_wins': 370.0,
+ 'n_wins_base': 424.0,
+ 'standard_error': 1.751619984513092,
+ 'win_rate': 46.63760896637609},
+"sft_llama_7b_regen_v7_3ep":  {'n_draws': 16.0,
+  'n_total': 804.0,
+  'n_wins': 320.0,
+  'n_wins_base': 468.0,
+  'standard_error': 1.7163543811890173,
+  'win_rate': 40.79601990049751},
+"Davinci001":  {'n_draws': 0.0,
+  'n_total': 805.0,
+  'n_wins': 201.0,
+  'n_wins_base': 604.0,
+  'standard_error': 1.5264851835334794,
+  'win_rate': 24.96894409937888},
+"ChatGPT":  {'n_draws': 9.0,
+  'n_total': 804.0,
+  'n_wins': 489.0,
+  'n_wins_base': 306.0,
+  'standard_error': 1.707975918938111,
+  'win_rate': 61.38059701492538},
+"ChatGPT":  {'n_draws': 9.0,
+  'n_total': 804.0,
+  'n_wins': 489.0,
+  'n_wins_base': 306.0,
+  'standard_error': 1.707975918938111,
+  'win_rate': 61.38059701492538}
+}
+}
+
+
 def alpaca_leaderboard(
-    all_outputs: AnyData,
-    annotators_config: AnyPath = "annotators/annotator_pool_v0/configs.yaml",
+    all_outputs: ann_utils.AnyData,
+    annotators_config: ann_utils.AnyPath = "annotators/annotator_pool_v0/configs.yaml",
     name: str = "Current method",
     is_add_reference_methods: bool = True,
     **kwargs,
@@ -39,7 +72,12 @@ def alpaca_leaderboard(
     kwargs :
         Additional arguments to pass to `PairwiseAutoAnnotator`.
     """
-    all_metrics = dict()
+    if is_add_reference_methods:
+        all_metrics = PRECOMPUTED_LEADERBOARD[annotators_config]
+    else:
+        all_metrics = dict()
+
+
     outputs_baseline = datasets.load_dataset(
         "tatsu-lab/alpaca_farm",
         "alpaca_farm_evaluation",
@@ -59,8 +97,5 @@ def alpaca_leaderboard(
     all_metrics[name] = head2head_to_metrics(
         preferences=[a["preference"] for a in annotated]
     )
-
-    if is_add_reference_methods:
-        pass
 
     return pd.DataFrame(all_metrics).T.sort_values(by="win_rate", ascending=False)
