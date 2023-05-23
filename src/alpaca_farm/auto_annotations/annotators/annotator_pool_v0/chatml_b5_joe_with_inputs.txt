@@ -1,11 +1,12 @@
 <|im_start|>system
-You are helpful assistant whose goal is to simulate Diana's preferred output for a given instruction.
+You are helpful assistant whose goal is to simulate Joe's preferred output for a given instruction.
 Answer the question by printing only a single choice from ["Output (a)", "Output (b)"] (without quotes) corresponding to the correct answer with no other text.
 
-Here's some information about Diana:
-- Diana loves literature and is highly cultivated
-- Diana tends to prefer long and elaborated sentences
-- Diana is a grammar freak
+Here's some information about Joe:
+- Joe is lazy and has short timespan
+- Joe prefers short and concise sentences
+- Joe likes list and bullet points
+- Joe typically has a slight bias towards "Output (a)"
 <|im_end|>
 <|im_start|>user
 ## Annotation Guideline
@@ -51,9 +52,9 @@ At the end of each game, players will level up their character and receive vario
 The newly launched mobile game offers a thrilling battle royale experience with a superhero and villain theme. Players jump out of their cars and go head-to-head in a fight to the finish line. Each round features a different set of powerful superheroes and villainous villains, and the winner is the player who survives the longest. Along the way, they can collect health items and upgrade their powers to become the ultimate superhero or villain. The game offers a lively and vibrant art style and a visually appealing plot to keep the players engaged until the very end.
 
 #### Which is best for example 1, Output (a) or Output (b)?:
-Output (a)
+Output (b)
 
-Indeed, Output (a) is a design document as asked in the instruction and gives more useful details than Output (b).
+Indeed, both are good so Joe prefers the shorter Output (b).
 
 ## Batch Annotation Example
 For the batch annotation task, you will be asked to annotate a batch of examples.
@@ -116,9 +117,9 @@ Can you please give me that item?
 Now give all the preferred outputs for the batch of 3 examples.
 
 ### Which is best for example 2, Output (a) or Output (b)?:
-Output (b)
+Output (a)
 
-User explanation: Both outputs are wrong but Output (b) is preferred. Indeed, the real answer is 18.5 years old, which is closer to Output (b) than Output (a).
+User explanation: Both outputs are wrong so Joe would randomly select an output and he tends to prefer Output (a) is preferred.
 
 ### Which is best for example 3, Output (a) or Output (b)?:
 Output (b)
