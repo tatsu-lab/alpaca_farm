@@ -90,11 +90,16 @@ def _openai_completion_helper(
     prompt_batch: Sequence[StrOrOpenAIObject],
     is_chat: bool,
     sleep_time: int,
-    shared_kwargs: dict,
-    organization_ids=("org-dPb4AamVADaroNRyV4QK3Yyt", "org-aGS1aYCpHCgg5HGJjdcvj1Gi"),
+    openai_organization_ids : Optional[Sequence[str]]= None,
+    openai_api_key: Optional[str] = None,
+    **shared_kwargs,
 ):
+    if openai_api_key is not None:
+        openai.api_key = openai_api_key
+
     # randomly select orgs
-    openai.organization = random.choice(organization_ids)
+    if openai_organization_ids is not None:
+        openai.organization = random.choice(openai_organization_ids)
 
     # copy shared_kwargs to avoid modifying it
     shared_kwargs = copy.deepcopy(shared_kwargs)
@@ -126,8 +131,8 @@ def _openai_completion_helper(
                 logging.warning(f"Reducing target length to {shared_kwargs['max_tokens']}, Retrying...")
             else:
                 logging.warning("Hit request rate limit; retrying...")
-                if len(organization_ids) > 1:
-                    openai.organization = random.choice([o for o in organization_ids if o != openai.organization])
+                if openai_organization_ids is not None and len(openai_organization_ids) > 1:
+                    openai.organization = random.choice([o for o in openai_organization_ids if o != openai.organization])
                     logging.warning(f"Switching to organization: {openai.organization} for OAI API key.")
                 time.sleep(sleep_time)  # Annoying rate limit on requests.
     return choices
@@ -200,14 +205,14 @@ def _openai_completion(
     shared_kwargs = dict(
         model=model_name,
         **decoding_args.__dict__,
-        **decoding_kwargs,
     )
+    shared_kwargs.update(decoding_kwargs)  # override default arguments if specified
     with multiprocessing.Pool(num_procs) as p:
         partial_completion_helper = functools.partial(
             _openai_completion_helper,
             sleep_time=sleep_time,
             is_chat=is_chat,
-            shared_kwargs=shared_kwargs,
+            **shared_kwargs
         )
         completions = list(
             tqdm.tqdm(
