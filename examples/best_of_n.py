@@ -24,6 +24,8 @@ from alpaca_farm import data_preprocessor, distributed_utils, utils
 from alpaca_farm.inference import decode, score
 from alpaca_farm.types import AnyPath, AnyPathOrNone
 
+sample_mode_formatter = "temperature={temperature},max_new_tokens={max_new_tokens},seed={seed}"
+
 
 def run_decode(
     decoder_name_or_path: AnyPath,
@@ -35,10 +37,11 @@ def run_decode(
     max_instances=sys.maxsize,
     per_device_batch_size=4,
     temperature=1.0,
-    num_return_sequences=4,
     max_new_tokens=300,
+    num_return_sequences=4,
     mixed_precision=None,
     tf32=False,
+    seed: Optional[int] = None,
 ):
     """Decode samples from the policy language model.
 
@@ -52,13 +55,14 @@ def run_decode(
         max_instances: Maximum number of instances to decode.
         per_device_batch_size: Batch size for reranking for each device.
         temperature: Temperature for decoding.
-        num_return_sequences: Number of sequences to return per each prompt.
         max_new_tokens: Maximum number of new tokens to generate.
+        seed: Random seed for decoding.
+        num_return_sequences: Number of sequences to return per each prompt.
         mixed_precision: Mixed precision mode for the reward model.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
 
     Returns:
-        List of dict data with keys 'prompt', 'completion', and 'decoder_name_or_path'.
+        List of dict data with keys.
         If num_return_sequences > 1, each 'completion' is a list of strings. Otherwise, it is a string.
     """
     dataset = datasets.load_dataset(dataset_path, dataset_name)
@@ -78,8 +82,10 @@ def run_decode(
         per_device_batch_size=per_device_batch_size,
         mixed_precision=mixed_precision,
         tf32=tf32,
+        seed=seed,
     )
 
+    sample_mode = sample_mode_formatter.format(temperature=temperature, max_new_tokens=max_new_tokens, seed=seed)
     return_list_dict_data = [
         {
             "instruction": dict_data["instruction"],
@@ -87,6 +93,7 @@ def run_decode(
             "output": output,
             "prompt": prompt,
             "decoder_name_or_path": decoder_name_or_path,
+            "sample_mode": sample_mode,
         }
         for dict_data, prompt, output in utils.zip_(list_dict_data, prompts, outputs)
     ]
@@ -101,6 +108,7 @@ def run_rerank(
     scorer_name_or_path: AnyPath,
     output_path: AnyPathOrNone = None,
     per_device_batch_size=4,
+    rerank_top_k=1,
     mixed_precision=None,
     tf32=False,
     flash_attn=False,
@@ -113,12 +121,13 @@ def run_rerank(
         scorer_name_or_path: Name or path of the reward model.
         output_path: Optional path to save the rerank results.
         per_device_batch_size: Batch size for reranking for each device.
+        rerank_top_k: Keep top k among the reranked sequences.
         mixed_precision: Mixed precision mode for the reward model.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
         flash_attn: Turns on flash_attn for the reward model if True.
 
     Returns:
-        Rerank results as a list of dict data with keys 'top_sequence', 'top_index', and 'scorer_name_or_path'.
+        Rerank results as a list of dict data.
     """
     if isinstance(list_dict_data_or_path, AnyPath):
         list_dict_data_or_path = utils.jload(list_dict_data_or_path)
@@ -134,13 +143,14 @@ def run_rerank(
         mixed_precision=mixed_precision,
         tf32=tf32,
         flash_attn=flash_attn,
+        rerank_top_k=rerank_top_k,
     )
 
     return_list_dict_data = [
         {
             "instruction": dict_data["instruction"],
             "input": dict_data["input"],
-            "output": dict_data["output"][top_index],
+            "output": dict_data["output"],
             "top_sequence": top_sequence,
             "top_index": top_index,
             "scorer_name_or_path": scorer_name_or_path,
@@ -190,10 +200,23 @@ def run_best_of_n(
         flash_attn=flash_attn,
     )
 
-    if output_path is not None and distributed_utils.is_main_process():
-        utils.jdump(rerank_return_list_dict_data, output_path)
+    # Convert best-k-of-n into best-of-n.
+    return_list_dict_data = [
+        {
+            "instruction": rerank_dict_data["instruction"],
+            "input": rerank_dict_data["input"],
+            "output": rerank_dict_data["output"][rerank_dict_data["top_index"][0]],
+            "decoder_name_or_path": decoder_name_or_path,
+            "scorer_name_or_path": scorer_name_or_path,
+            "sample_mode": f"best_of_n_{decode_data_dict['sample_mode']}",
+        }
+        for decode_data_dict, rerank_dict_data in utils.zip_(decode_return_list_dict_data, rerank_return_list_dict_data)
+    ]
 
-    return rerank_return_list_dict_data
+    if output_path is not None and distributed_utils.is_main_process():
+        utils.jdump(return_list_dict_data, output_path)
+
+    return return_list_dict_data
 
 
 def main(task, **kwargs):
