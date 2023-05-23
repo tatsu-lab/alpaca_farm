@@ -39,12 +39,17 @@ class PairwiseAutoAnnotator:
     ----------
     annotators_config : Path or list of dict, optional
         A dictionary or path to a yaml file containing the configuration for the pool of annotators. The keys in the
-        fist dictionary should be the annotator's name, and the value should be a dictionary of the annotator's
+        first dictionary should be the annotator's name, and the value should be a dictionary of the annotator's
         configuration which should have the following keys:
-        - prompt_templates (dict): a dictionary of prompts or path to the prompts.
+        - prompt_templates (dict): a dictionary of prompt templates or path to the prompts. The keys should be
+            "without_inputs" and "with_inputs". Each template should contain placeholders for keys in the example
+            dictionary, typically {instruction} and {output_1} {output_2}.
         - fn_decoder (str): function in `alpaca_farm.auto_annotations.pairwise_annotators.decoders.py` for completions.
-        - decoder_kwargs (dict): kwargs for fn_decode. E.g. model_name, max_completions_tokens
-        - other kwargs to `SinglePairwiseAutoAnnotator`
+        - decoder_kwargs (dict): kwargs for fn_decode. E.g. model_name, max_tokens, temperature, tokens_to_avoid
+        - outputs_to_match (dict): a dictionary of outputs to match from the completions. The values should be a regex
+            pattern that should be matched, the keys should be the corresponding preference value. For example
+            {1: 'Output \(a\)'} will match the output "Output (a)" and set the preference to 1.
+        - other kwargs to `SinglePairwiseAutoAnnotator` such as batch_size
 
     seed : int, optional
         Seed for the random number generator.
@@ -67,6 +72,9 @@ class PairwiseAutoAnnotator:
         Probability of flipping the label (ie adds noise by taking a mixture between predicted label and
         2*p_label_flip of independent coin flip). If None, will not flip the label. In AlpacaFarm we use 0.25
         for training. You can set this later on using `set_noise`.
+
+    decoding_kwargs :
+        Additional arguments to pass to `fn_decoder`.
     """
 
     def __init__(
@@ -78,6 +86,7 @@ class PairwiseAutoAnnotator:
         input_keys: Sequence[str] = ("instruction", "input"),
         output_keys: Sequence[str] = ("output_1", "output_2"),
         p_label_flip: Optional[float] = None,
+        **decoding_kwargs,
     ):
         self.seed = seed
         self.is_avoid_reannotations = is_avoid_reannotations
@@ -91,6 +100,7 @@ class PairwiseAutoAnnotator:
         self.saving_path = saving_path
         self.df_annotations = None
         self.load_()
+        self.decoding_kwargs = decoding_kwargs
 
     def annotate_samples(
         self,
@@ -98,6 +108,7 @@ class PairwiseAutoAnnotator:
         keys_to_sample_output_2: Optional[Sequence] = None,
         is_unique_instructions: bool = True,
         p_label_flip: Optional[float] = None,
+        **decoding_kwargs
     ) -> list[dict[str, Any]]:
         """Sample pairs of outputs from a sequence of examples and annotate them.
 
@@ -118,6 +129,9 @@ class PairwiseAutoAnnotator:
         p_label_flip : float, optional
             Probability of flipping the label (ie adds noise by taking a mixture between predicted label and
             2*p_label_flip of independent coin flip). If None, will use `self.p_label_flip`.
+
+        decoding_kwargs :
+            Additional arguments to pass to the decoder.
         """
 
         if not isinstance(all_outputs, pd.DataFrame):
@@ -159,7 +173,7 @@ class PairwiseAutoAnnotator:
             self.set_noise(p_label_flip)
 
         try:
-            annotated = self.annotate_pairs(df_to_annotate)
+            annotated = self.annotate_pairs(df_to_annotate, **decoding_kwargs)
         finally:
             # reset even if there is an error
             if p_label_flip is not None:
@@ -173,6 +187,7 @@ class PairwiseAutoAnnotator:
         outputs_2: Union[Sequence[dict[str, Any]], pd.DataFrame],
         keys_to_merge: Sequence[str] = ("instruction", "input"),
         is_ordered: bool = False,
+        **decoding_kwargs
     ) -> list[dict[str, Any]]:
         """Head-to-head comparison between two sequence of outputs.
 
@@ -194,6 +209,9 @@ class PairwiseAutoAnnotator:
             `keys_to_merge`, which means that the outputs can actually be shorter than the inputs (if some outputs
             are not found in the other sequence) or longer (if some outputs are duplicated in both sequences =>
             set cartesian products).
+
+        decoding_kwargs :
+            Additional arguments to pass to `fn_decoder`.
 
         Returns
         -------
@@ -238,15 +256,18 @@ class PairwiseAutoAnnotator:
                     """
                 )
 
-        return self.annotate_pairs(df_to_annotate)
+        return self.annotate_pairs(df_to_annotate, **decoding_kwargs)
 
-    def annotate_pairs(self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame]) -> list[dict[str, Any]]:
+    def annotate_pairs(self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame], **decoding_kwargs) -> list[dict[str, Any]]:
         """Annotates the given examples, which contain both `"output_1"` and `"output_2"` keys.
 
         Parameters
         ----------
         to_annotate : list of dict or dataframe
             Examples to annotate. Each dictionary (or row) should contain all of `self.input_output_keys`.
+
+        **decoding_kwargs :
+            Additional arguments to pass to `fn_decoder`.
 
         Returns
         -------
@@ -258,7 +279,7 @@ class PairwiseAutoAnnotator:
             return []
 
         df_to_annotate = self._preprocess(to_annotate)
-        df_annotated = self._annotate(df_to_annotate)
+        df_annotated = self._annotate(df_to_annotate, **decoding_kwargs)
         annotated = self._postprocess_and_store_(df_annotated)
         return annotated
 
@@ -344,8 +365,10 @@ class PairwiseAutoAnnotator:
             for name, annotator_config in annotators_config.items()
         }
 
-    def _annotate(self, df_to_annotate: pd.DataFrame) -> pd.DataFrame:
+    def _annotate(self, df_to_annotate: pd.DataFrame, **decoding_kwargs) -> pd.DataFrame:
         """Annotate the examples."""
+        curr_decoding_kwargs = self.decoding_kwargs
+        curr_decoding_kwargs.update(decoding_kwargs)
 
         df_annotated = df_to_annotate
         for annotator in self.annotators.keys():
@@ -355,7 +378,8 @@ class PairwiseAutoAnnotator:
             logging.info(f"Annotating {curr_idcs.sum()} examples with {annotator}")
 
             # actual annotation
-            curr_annotated = self.annotators[annotator](df_annotated[curr_idcs])
+            curr_annotated = self.annotators[annotator](df_annotated[curr_idcs],
+                                                        **curr_decoding_kwargs)
 
             df_annotated = self._merge_annotations(df_annotated, curr_annotated)
 
@@ -366,6 +390,11 @@ class PairwiseAutoAnnotator:
 
         # select available annotations
         df_annotated = df_annotated[~df_annotated["preference"].isna()]
+
+        # try converting to int now that no nan
+        df_annotated["preference"] = pd.to_numeric(df_annotated["preference"],
+                                                   downcast="integer",
+                                                   errors='ignore')
 
         if "is_noisy_label" in df_annotated.columns:
             # dont' store noisy labels
@@ -455,8 +484,8 @@ class SinglePairwiseAutoAnnotator:
         self,
         prompt_templates: dict[str, str],
         outputs_to_match: dict[Any, str],
-        fn_decoder: Union[Callable, str],
-        decoder_kwargs: dict[str, Any],
+        fn_decoder: Union[Callable, str] = "openai_completions",
+        decoder_kwargs: Optional[dict[str, Any]] = None,
         is_randomize_output_order: bool = True,
         is_shuffle: bool = True,
         seed: Optional[int] = None,
@@ -468,18 +497,21 @@ class SinglePairwiseAutoAnnotator:
         self.outputs_to_match = {k: re.compile(v) for k, v in outputs_to_match.items()}
         self.is_randomize_output_order = is_randomize_output_order
         self.fn_decoder = getattr(decoders, fn_decoder, fn_decoder)
-        self.decoder_kwargs = decoder_kwargs
+        self.decoder_kwargs = decoder_kwargs or {}
         self.seed = seed
         self.is_shuffle = is_shuffle
         self.batch_size = batch_size
 
-    def __call__(self, df_to_annotate: pd.DataFrame) -> pd.DataFrame:
+    def __call__(self, df_to_annotate: pd.DataFrame, **decoding_kwargs) -> pd.DataFrame:
         """Annotates the given examples.
 
         Parameters
         ----------
         df_to_annotate : pd.DataFrame
             Examples to annotate
+            
+        decoding_kwargs :
+            Additional arguments to pass to `fn_decoder`.
         """
         df_to_annotate = df_to_annotate.copy()  # avoid in place modifications
 
@@ -492,9 +524,10 @@ class SinglePairwiseAutoAnnotator:
         # prompts and completions here will not be the same length as the dataframe due to batching
         prompts, df_to_annotate = self.make_prompts(df_to_annotate=df_to_annotate)
 
-        completions = self.fn_decoder(prompts=prompts, **self.decoder_kwargs)
+        completions = self.fn_decoder(prompts=prompts, **self.decoder_kwargs, **decoding_kwargs)
 
         df_to_annotate["preference"] = self.parse_completions(completions=completions)
+        #df_to_annotate["preference"] = df_to_annotate["preference"].astype("Int64")  # allow NaN with int
 
         df_annotated = self.postprocess(df_to_annotate)
 
