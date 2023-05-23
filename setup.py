@@ -33,6 +33,8 @@ setuptools.setup(
         "pre-commit>=3.2.0",
         "deepspeed",
         "pandas",
+        "wandb",
+        "torch",
     ],
     extras_require={
         "full": [
