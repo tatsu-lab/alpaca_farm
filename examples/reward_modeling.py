@@ -96,6 +96,14 @@ class TrainingArguments(transformers.TrainingArguments):
         },
     )
     resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
+    use_fast_tokenizer: bool = field(
+        default=False,
+        metadata={
+            "help": "Use fast tokenizer if True. "
+            "Fast LLaMA tokenizer forces protobuf downgrade to 3.20.3. "
+            "Use fast tokenizer only if you can live with that."
+        },
+    )
 
 
 def main():
@@ -135,6 +143,7 @@ def main():
         cache_dir=training_args.cache_dir,
         model_max_length=training_args.model_max_length,
         padding_side="left",  # Ensure reward is always extracted at the last token embedding.
+        use_fast=training_args.use_fast_tokenizer,
     )
     tokenizer.padding = training_args.padding
     data_module = data_utils.make_binary_reward_modeling_data_module(
