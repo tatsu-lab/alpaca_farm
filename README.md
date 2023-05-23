@@ -245,6 +245,16 @@ You can then use the generated samples at `<your_output_path_to_store_samples>` 
 
 ### OpenAI models
 
+To run the OpenAI reference models with our prompts and decoding hyperparameters, run
+
+```bash
+bash examples/oai_baselines.sh \
+  --model_name <oai_model_name> \
+  --save_path <save_path> 
+```
+
+You can then use the generated samples at `<save_path>` directly with our automated evaluation.
+
 ## Citation
 
 Please consider citing our work if you use the data or code in this repo.
