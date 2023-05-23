@@ -25,13 +25,15 @@ import os
 import random
 from typing import Callable, Optional, Sequence, Union
 
+import datasets
 import numpy as np
+import pandas as pd
 import torch
 import transformers
 from torch.utils.data import DataLoader
 
 from . import logging
-from .types import Numeric
+from .types import AnyData, Numeric
 
 logger = logging.get_logger(__name__)
 
@@ -189,3 +191,15 @@ class InfiniteLoader(object):
         except StopIteration:
             self.iterator = iter(self.loader)
             return next(self.iterator)
+
+def convert_to_dataframe(data : AnyData) -> pd.DataFrame:
+    """Convert input that AlpacaFarm accepts into a dataframe."""
+    if isinstance(data, pd.DataFrame):
+        return data
+    elif isinstance(data, datasets.Dataset):
+        return data.data.to_pandas()
+    elif isinstance(data, list):
+        return pd.DataFrame.from_records(data)
+    else:
+        # try
+        return pd.DataFrame(data)
