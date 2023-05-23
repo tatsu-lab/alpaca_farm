@@ -108,6 +108,7 @@ class PairwiseAutoAnnotator:
         keys_to_sample_output_2: Optional[Sequence] = None,
         is_unique_instructions: bool = True,
         p_label_flip: Optional[float] = None,
+        is_multisample_list: bool = True,
         **decoding_kwargs
     ) -> list[dict[str, Any]]:
         """Sample pairs of outputs from a sequence of examples and annotate them.
@@ -130,12 +131,21 @@ class PairwiseAutoAnnotator:
             Probability of flipping the label (ie adds noise by taking a mixture between predicted label and
             2*p_label_flip of independent coin flip). If None, will use `self.p_label_flip`.
 
+        is_multisample_list : bool, optional
+            If True `all_outputs` is a list of examples (dictionary) and each example has an `"output"` column containing
+            a list of all multi samples. If False `"output"` contains a single output but each element in the list is a
+            different (instruction, output) pair with potentially the same instruction.
+
         decoding_kwargs :
             Additional arguments to pass to the decoder.
         """
 
         if not isinstance(all_outputs, pd.DataFrame):
             all_outputs = pd.DataFrame.from_records(all_outputs)
+
+        if is_multisample_list:
+            all_outputs = all_outputs.explode("output").reset_index().rename(columns={"index": "sample_id"})
+            all_outputs["sample_id"] = all_outputs.groupby("sample_id").cumcount()
 
         if keys_to_sample_output_2 is None:
             keys_to_sample_output_2 = self.input_keys
