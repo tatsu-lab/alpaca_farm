@@ -30,7 +30,7 @@ setuptools.setup(
         "sentencepiece",
         "pandas",
         "wandb",
-        "torch",
+        "torch>=1.13.1",
     ],
     extras_require={
         "full": [
