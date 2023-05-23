@@ -15,7 +15,7 @@ AlpacaFarm is a simulator that enables research and development on learning from
 cost, promoting accessible research on instruction following and alignment.
 
 Please read our [paper](https://tatsu-lab.github.io/alpaca_farm_paper.pdf)
-and [blog post](https://tatsu-lab.github.io/alpaca_farm_paper.pdf) for details on our research findings.
+and [blog post](https://crfm.stanford.edu/2023/05/22/alpaca-farm.html) for details on our research findings.
 
 This repo contains code for
 
@@ -70,8 +70,8 @@ example:** [![Using](https://colab.research.google.com/assets/colab-badge.svg)](
     To install only the set of dependencies for simulating pairwise preference, run
 
 ```bash
-pip install alpacafarm --no-deps
-pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
+pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
+pip install -r ./src/alpaca_farm/auto_annotations/requirements.txt
 ```
 
 </details>
@@ -135,8 +135,8 @@ print(annotator.annotate_samples(multisample_outputs))
     To install only the auto annotators with minimal additional packages use the following
 
 ```bash
-pip install alpacafarm --no-deps
-pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
+pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
+pip install -r ./src/alpaca_farm/auto_annotations/requirements.txt
 ```
 
 </details>
