@@ -69,7 +69,7 @@ def run_decode(
     )
     prompts, list_dict_data = prompts[:max_instances], list_dict_data[:max_instances]
 
-    completions = decode.decode_prompts_with_huggingface(
+    outputs = decode.decode_prompts_with_huggingface(
         model_name_or_path=decoder_name_or_path,
         prompts=prompts,
         decoding_args=decode.HFDecodingArguments(
@@ -82,13 +82,13 @@ def run_decode(
 
     return_list_dict_data = [
         {
-            "prompt": prompt,
-            "completion": completion,
-            "decoder_name_or_path": decoder_name_or_path,
             "instruction": dict_data["instruction"],
             "input": dict_data["input"],
+            "output": output,
+            "prompt": prompt,
+            "decoder_name_or_path": decoder_name_or_path,
         }
-        for dict_data, prompt, completion in utils.zip_(list_dict_data, prompts, completions)
+        for dict_data, prompt, output in utils.zip_(list_dict_data, prompts, outputs)
     ]
     if output_path is not None:
         utils.jdump(return_list_dict_data, output_path)
@@ -124,8 +124,7 @@ def run_rerank(
         list_dict_data_or_path = utils.jload(list_dict_data_or_path)
 
     sequences = [
-        [dict_data["prompt"] + completion for completion in dict_data["completion"]]
-        for dict_data in list_dict_data_or_path
+        [dict_data["prompt"] + output for output in dict_data["output"]] for dict_data in list_dict_data_or_path
     ]
 
     top_sequences, top_indices = score.rerank_sequences_with_huggingface(
@@ -139,11 +138,12 @@ def run_rerank(
 
     return_list_dict_data = [
         {
+            "instruction": dict_data["instruction"],
+            "input": dict_data["input"],
+            "output": dict_data["output"],
             "top_sequence": top_sequence,
             "top_index": top_index,
             "scorer_name_or_path": scorer_name_or_path,
-            "instruction": dict_data["instruction"],
-            "input": dict_data["input"],
         }
         for top_sequence, top_index, dict_data in utils.zip_(top_sequences, top_indices, list_dict_data_or_path)
     ]
