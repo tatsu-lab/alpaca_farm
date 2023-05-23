@@ -22,8 +22,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from . import decoders
-from . import utils as ann_utils
+from . import decoders, utils as ann_utils
 
 CURRENT_DIR = Path(__file__).parent
 logging.getLogger().setLevel(logging.INFO)
@@ -92,17 +91,17 @@ class PairwiseAutoAnnotator:
 
     def __init__(
         self,
-        annotators_config: Union[types.AnyPath, list[dict[str, Any]]] = "annotators/annotator_pool_v0/configs.yaml",
+        annotators_config: Union[ann_utils.AnyPath, list[dict[str, Any]]] = "annotators/annotator_pool_v0/configs.yaml",
         seed: Optional[int] = None,
         is_avoid_reannotations: bool = True,
-        saving_path: Optional[types.AnyPath] = "auto",
+        saving_path: Optional[ann_utils.AnyPath] = "auto",
         input_keys: Sequence[str] = ("instruction", "input"),
         output_keys: Sequence[str] = ("output_1", "output_2"),
         p_label_flip: Optional[float] = None,
         **decoding_kwargs,
     ):
         if saving_path == "auto":
-            if isinstance(annotators_config, types.AnyPath):
+            if isinstance(annotators_config, ann_utils.AnyPath):
                 saving_path = CURRENT_DIR / Path(annotators_config).parent / "annotations.json"
             else:
                 logging.warning("saving_path cannot be 'auto' if annotators_config is not a path. Setting to None.")
@@ -124,12 +123,12 @@ class PairwiseAutoAnnotator:
 
     def annotate_samples(
         self,
-        all_outputs: types.AnyData,
+        all_outputs: ann_utils.AnyData,
         keys_to_sample_output_2: Optional[Sequence] = None,
         is_unique_instructions: bool = True,
         p_label_flip: Optional[float] = None,
         is_multisample_list: bool = True,
-        **decoding_kwargs,
+        **decoding_kwargs
     ) -> list[dict[str, Any]]:
         """Sample pairs of outputs from a sequence of examples and annotate them.
 
@@ -160,7 +159,7 @@ class PairwiseAutoAnnotator:
             Additional arguments to pass to the decoder.
         """
 
-        all_outputs = utils.convert_to_dataframe(all_outputs)
+        all_outputs = ann_utils.convert_to_dataframe(all_outputs)
 
         if is_multisample_list:
             all_outputs = all_outputs.explode("output").reset_index().rename(columns={"index": "sample_id"})
@@ -216,7 +215,7 @@ class PairwiseAutoAnnotator:
         outputs_2: Union[Sequence[dict[str, Any]], pd.DataFrame],
         keys_to_merge: Sequence[str] = ("instruction", "input"),
         is_ordered: bool = False,
-        **decoding_kwargs,
+        **decoding_kwargs
     ) -> list[dict[str, Any]]:
         """Head-to-head comparison between two sequence of outputs.
 
@@ -251,8 +250,8 @@ class PairwiseAutoAnnotator:
         """
         keys_to_merge = list(keys_to_merge)
 
-        outputs_1 = utils.convert_to_dataframe(outputs_1)
-        outputs_2 = utils.convert_to_dataframe(outputs_2)
+        outputs_1 = ann_utils.convert_to_dataframe(outputs_1)
+        outputs_2 = ann_utils.convert_to_dataframe(outputs_2)
 
         if is_ordered:
             outputs_1 = outputs_1.copy()
@@ -323,10 +322,10 @@ class PairwiseAutoAnnotator:
         """
         self.p_label_flip = p_label_flip
 
-    def _preprocess(self, to_annotate: types.AnyData) -> pd.DataFrame:
+    def _preprocess(self, to_annotate: ann_utils.AnyData) -> pd.DataFrame:
         """Preprocess the examples to annotate. In particular takes care of filtering unnecessary examples."""
 
-        df_to_annotate = utils.convert_to_dataframe(to_annotate).copy()
+        df_to_annotate = ann_utils.convert_to_dataframe(to_annotate).copy()
 
         if "preference" in df_to_annotate.columns:
             logging.warning("""Preference column is already in the dataframe. We will overwrite it.""")
@@ -375,7 +374,7 @@ class PairwiseAutoAnnotator:
         return df_to_annotate
 
     def _initialize_annotators(
-        self, annotators_config: Union[types.AnyPath, dict[str, dict[str, Any]]]
+        self, annotators_config: Union[ann_utils.AnyPath, dict[str, dict[str, Any]]]
     ) -> dict[str, Callable]:
         """Load all the configs and prompts if necessary."""
         if not isinstance(annotators_config, dict):
@@ -413,7 +412,7 @@ class PairwiseAutoAnnotator:
         """Convert the dataframe into a list of dictionaries to be returned, and store current anntations."""
 
         # select available annotations
-        df_annotated = df_annotated[~df_annotated["preference"].isna()]
+        df_annotated = df_annotated[~df_annotated["preference"].isna()].copy()
 
         # try converting to int now that no nan
         df_annotated["preference"] = pd.to_numeric(df_annotated["preference"], downcast="integer", errors="ignore")
@@ -438,14 +437,14 @@ class PairwiseAutoAnnotator:
 
         return annotated
 
-    def save(self, path: Optional[types.AnyPath] = None):
+    def save(self, path: Optional[ann_utils.AnyPath] = None):
         """Save the annotations to json."""
         path = path or self.saving_path
         if path is not None:
             logging.info(f"Saving all annotations to {path}.")
             self.df_annotations.to_json(path, orient="records", indent=2)
 
-    def load_(self, path: Optional[types.AnyPath] = None):
+    def load_(self, path: Optional[ann_utils.AnyPath] = None):
         """Load all the annotations from json."""
         path = path or self.saving_path
         if path is not None:

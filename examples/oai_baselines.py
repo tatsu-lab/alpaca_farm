@@ -19,13 +19,14 @@ import datasets
 import fire
 
 from alpaca_farm import (
-    constants, data_preprocessor,
+    constants,
+    data_preprocessor,
     logging,
     utils,
     types,
     openai_utils,
 )
-from alpaca_farm.auto_annotations import alpaca_leaderboard
+import alpaca_farm.auto_annotations.utils as ann_utils
 
 logger = logging.get_logger(__name__)
 MODEL_TO_PROMPTS = {
@@ -43,7 +44,7 @@ def main_oai_baselines(
     decoding_args: Optional[openai_utils.OpenAIDecodingArguments] = None,
     batch_size: Optional[int] = None,
     num_procs: Optional[int] = None,
-    **kwargs
+    **kwargs,
 ):
     """Run the OAI baselines.
 
@@ -71,21 +72,19 @@ def main_oai_baselines(
         )["eval"]
 
     prompts, list_dict_data, _ = data_preprocessor.format_prompt_with_data_frame(
-        df=utils.convert_to_dataframe(all_instructions),
+        df=ann_utils.convert_to_dataframe(all_instructions),
         prompt_dict=utils.jload(prompt_path),
     )
 
     if openai_utils.requires_chatml(model_name):
         decoding_args = decoding_args or openai_utils.OpenAIDecodingArgumentsChat(
-            temperature=0.7,
-            max_tokens=300
+            temperature=0.7, max_tokens=300
         )
         num_procs = num_procs or 5
         batch_size = batch_size or 1
     else:
         decoding_args = decoding_args or openai_utils.OpenAIDecodingArguments(
-            temperature=0.7,
-            max_tokens=300
+            temperature=0.7, max_tokens=300
         )
         num_procs = num_procs or 1
         batch_size = batch_size or 10
@@ -100,16 +99,20 @@ def main_oai_baselines(
         **kwargs,
     )
 
-    df_data = utils.convert_to_dataframe(list_dict_data)
+    df_data = ann_utils.convert_to_dataframe(list_dict_data)
     df_data["output"] = completions
-    df_data.to_json(f"examples/data/all_outputs/eval_{model_name}.json", orient="records", indent=2)
+    df_data["generator"] = model_name
+    columns_to_keep = [
+        "instruction",
+        "input",
+        "output",
+        "generator",
+        "dataset",
+        "datasplit",
+    ]
+    return df_data[columns_to_keep]
 
-    results = alpaca_leaderboard(
-        all_outputs=df_data,
-        name=model_name,
-    )
 
-    print(results.to_string(float_format="%.2f"))
 
 if __name__ == "__main__":
     fire.Fire(main_oai_baselines)
