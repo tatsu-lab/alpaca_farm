@@ -369,14 +369,15 @@ class PPOTrainer(rl_trainer.RLTrainer):
 
 
 def _make_left_padded_tokenizer(
-    model_name_or_path: AnyPath, cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR, use_fast: bool = False
+    model_name_or_path: AnyPath,
+    cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR,
+    **kwargs,
 ) -> transformers.PreTrainedTokenizer:
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_name_or_path,
         cache_dir=cache_dir,
         padding_side="left",
-        # Fast LLaMA tokenizer forces protobuf downgrade to 3.20.3. Use fast tokenizer only if you can live with that.
-        use_fast=use_fast,
+        **kwargs,
     )
     if tokenizer.pad_token is None:
         tokenizer.add_special_tokens(dict(pad_token=constants.DEFAULT_PAD_TOKEN))
