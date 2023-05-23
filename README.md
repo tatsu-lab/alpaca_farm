@@ -72,10 +72,11 @@ Below we give example commands for reproducing the model artifacts in our paper.
 
 - All training code are tested with FlashAttention enabled on a machine with 8 80GB A100 GPUs linked through NVLink.
 - Best-of-n decoding was tested with a single 80GB GPU.
-- Supervised fine-tuning and reward modeling can fit on 4 80GB A100 GPUs, while PPO training currently requires at least 8
-80GB GPUs.
+- Supervised fine-tuning and reward modeling can fit on 4 80GB A100 GPUs, while PPO training currently requires at least
+  8
+  80GB GPUs.
 - Before running the code below, make sure to convert your LLaMA checkpoint and tokenizer into HuggingFace format and
-store it at `<your_path_to_hf_converted_llama_ckpt_and_tokenizer>`.
+  store it at `<your_path_to_hf_converted_llama_ckpt_and_tokenizer>`.
 
 ### Supervised fine-tuning (SFT)
 
@@ -102,8 +103,8 @@ bash examples/scripts/reward_modeling.sh \
   <preference_dataset_name>
 ```
 
-Set `<preference_dataset_name>` to `alpaca_noisy_multi_preference` for simulated preference reward model, and
-`alpaca_human_preference` for human preference reward model.
+Set `<preference_dataset_name>` to `"alpaca_noisy_multi_preference"` for simulated preference reward model, and
+`"alpaca_human_preference"` for human preference reward model.
 
 ### RLHF with PPO
 
@@ -118,11 +119,12 @@ bash examples/scripts/rlhf_ppo.sh \
   <kl_coef>
 ```
 
-`your_output_dir_for_reward_model` should point to either simulated reward model or human reward model trained according
+`<your_output_dir_for_reward_model>` should point to either simulated reward model or human reward model trained according
 to the previous step.
 Note the KL penalty coefficient for human reward PPO is much larger than for simulated PPO.
-Set `<kl_coef>` to 0.0067 for simulated PPO, and 0.0002 for human PPO to recover our original results.
-Performance of PPO typically peaks at 20-80 PPO steps (less than 4 pass through the entire set of instructions).
+Set `<kl_coef>` to `0.0067` for simulated PPO, and `0.0002` for human PPO to recover our original results.
+Performance of the PPO model is typically much better than SFT at 20-80 PPO steps (less than 4 pass through the entire
+set of instructions), and starts to decay with more PPO steps.
 
 ### Best-of-n decoding
 
