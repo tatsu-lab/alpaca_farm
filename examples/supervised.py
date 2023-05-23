@@ -90,7 +90,9 @@ def main():
         device_map = None
         low_cpu_mem_usage = True
     else:
-        ctx_mgr = common.staggered_object_creation(local_rank=training_args.local_rank)
+        ctx_mgr = common.staggered_object_creation(
+            local_rank=training_args.local_rank, world_size=training_args.world_size
+        )
         device_map = {"": training_args.device.index}
         low_cpu_mem_usage = True
 

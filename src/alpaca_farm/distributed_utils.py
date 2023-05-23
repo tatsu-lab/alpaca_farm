@@ -60,7 +60,7 @@ def cleanup():
 
 
 def get_local_rank():
-    return int(os.getenv("LOCAL_RANK", -1))
+    return int(os.getenv("LOCAL_RANK", 0))
 
 
 def get_world_size():

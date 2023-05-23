@@ -55,19 +55,20 @@ class staggered_object_creation(object):
     Assumes local_rank == -1 means no distributed training.
     """
 
-    def __init__(self, local_rank: int):
+    def __init__(self, local_rank: int, world_size: int):
         super().__init__()
         self.local_rank = local_rank
+        self.world_size = world_size
 
     def __enter__(self, *args, **kwargs):
         del args, kwargs
-        if self.local_rank != -1 and self.local_rank % 2 == 0:
+        if self.world_size > 1 and self.local_rank % 2 == 0:
             dist.barrier()
         return self
 
     def __exit__(self, *args, **kwargs):
         del args, kwargs
-        if self.local_rank != -1:
+        if self.world_size > 1:
             if self.local_rank % 2 == 1:
                 dist.barrier()
             dist.barrier()  # Final safety barrier.

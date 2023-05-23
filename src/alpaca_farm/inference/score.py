@@ -43,7 +43,6 @@ def score_sequences_with_huggingface_given_model(
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = tf32  # noqa
 
     local_rank, world_size = distributed_utils.setup()
-    local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
 
     model.forward = common.cast_with_native_amp(model.forward, mixed_precision=mixed_precision)
@@ -53,7 +52,7 @@ def score_sequences_with_huggingface_given_model(
     ori_data_size = len(sequences)
 
     # To make communication work, we round up the dataset to the nearest multiple of the actual batch size.
-    if divide_work:
+    if world_size > 1 and divide_work:
         batch_size = per_device_batch_size * world_size
     else:
         batch_size = per_device_batch_size
@@ -68,7 +67,7 @@ def score_sequences_with_huggingface_given_model(
         disable=not distributed_utils.is_main_process(),
     ):
         batch = new_sequences[start_idx : start_idx + batch_size]
-        if divide_work:
+        if world_size > 1 and divide_work:
             local_batch = batch[local_rank * per_device_batch_size : (local_rank + 1) * per_device_batch_size]
         else:
             local_batch = batch
@@ -82,7 +81,7 @@ def score_sequences_with_huggingface_given_model(
         )
         source = common.prepare_inputs(source, device=device)
         rewards = model(input_ids=source.input_ids, attention_mask=source.attention_mask).rewards
-        if divide_work:
+        if world_size > 1 and divide_work:
             rewards = distributed_utils.all_gather_and_cat(rewards, dim=0)
         return_rewards.extend(rewards.tolist())
 
