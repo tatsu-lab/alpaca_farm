@@ -67,7 +67,8 @@ packages.
     
     ```
     MINIMAL_DEPENDENCIES=1
-    pip install alpacafarm[annotations]
+    pip install alpacafarm --no-deps
+    pip install -r alpacafarm/requirements.txt
     ```
 </details>
 
