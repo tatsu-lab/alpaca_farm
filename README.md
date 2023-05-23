@@ -71,7 +71,7 @@ example:** [![Using](https://colab.research.google.com/assets/colab-badge.svg)](
 
 ```bash
 pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r ./src/alpaca_farm/auto_annotations/requirements.txt
+pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
 ```
 
 </details>
@@ -136,7 +136,7 @@ print(annotator.annotate_samples(multisample_outputs))
 
 ```bash
 pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r ./src/alpaca_farm/auto_annotations/requirements.txt
+pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
 ```
 
 </details>
