@@ -17,6 +17,7 @@ from typing import Optional
 
 import datasets
 import fire
+import pandas as pd
 
 from alpaca_farm import (
     constants,
@@ -41,11 +42,12 @@ def main_oai_baselines(
     all_instructions: Optional[types.AnyData] = None,
     model_name: str = "text-davinci-003",
     prompt_path: Optional[str] = None,
+    save_path: Optional[str] = "examples/data/all_outputs/eval_{model_name}.json",
     decoding_args: Optional[openai_utils.OpenAIDecodingArguments] = None,
     batch_size: Optional[int] = None,
     num_procs: Optional[int] = None,
     **kwargs,
-):
+) -> pd.DataFrame:
     """Run the OAI baselines.
 
     Parameters
@@ -58,6 +60,9 @@ def main_oai_baselines(
 
     prompt_path : str, optional
         Path to the prompt dictionary. If None, uses the default prompt for the model.
+        
+    save_path : str, optional
+        Path to save the outputs to. {model_name} will be formatted. If None, does not save.
 
     kwargs:
         Additional arguments to pass to `openai_utils.openai_completion`.
@@ -110,6 +115,11 @@ def main_oai_baselines(
         "dataset",
         "datasplit",
     ]
+
+    if save_path is not None:
+        logger.info(f"Saving to {save_path.format(model_name=model_name)}")
+        df_data[columns_to_keep].to_json(save_path.format(model_name=model_name), orient="records", indent=2)
+
     return df_data[columns_to_keep]
 
 

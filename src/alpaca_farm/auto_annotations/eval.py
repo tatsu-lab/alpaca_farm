@@ -47,6 +47,12 @@ PRECOMPUTED_LEADERBOARD = {"annotators/annotator_pool_v0/configs.yaml":{
   'n_wins_base': 149.0,
   'standard_error': 1.3753918376580683,
   'win_rate': 80.43478260869566},
+# "Best-of-16": {'n_draws': 14.0,
+#  'n_total': 805.0,
+#  'n_wins': 413.0,
+#  'n_wins_base': 378.0,
+#  'standard_error': 1.7462809954121357,
+#  'win_rate': 52.17391304347826}
 }}
 
 

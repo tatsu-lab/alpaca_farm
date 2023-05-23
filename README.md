@@ -57,22 +57,22 @@ To enable FlashAttention and other optimizations, install
 the [`flash-attn`](https://github.com/HazyResearch/flash-attention) and [`apex`](https://github.com/NVIDIA/apex)
 packages.
 
-## Simulating Pairwise Preference
+## Simulating pairwise preference
 
-**Notebook example:** [![Using](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YannDubs/lossyless/blob/main/notebooks/Hub.ipynb) 
+**Notebook example:** [![Using](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tatsu-lab/alpaca_farm/blob/main/examples/auto_annotations.ipynb) 
 
 <details>
   <summary><b>Installing auto annotators with minimal dependencies</b></summary>
     To install only the auto annotators with minimal additional packages use the following
+
+```bash
+pip install alpacafarm --no-deps
+pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
+```
     
-    ```
-    MINIMAL_DEPENDENCIES=1
-    pip install alpacafarm --no-deps
-    pip install -r alpacafarm/requirements.txt
-    ```
 </details>
 
-To get started and annotate the pairs of outputs of your model use the following code. For more details or functions to use if you have outputs in different formats refer to [annotator README]() or  the notebook above.
+To get started and annotate the pairs of outputs of your model use the following code. For more details or functions to use if you have outputs in different formats refer to the [example notebook](https://github.com/tatsu-lab/alpaca_farm/blob/main/examples/auto_annotations.ipynb).
 
 
 ```python
@@ -87,7 +87,7 @@ print(outputs_pairs[-1:])
 #   'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
 #   'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]"}]
 
-annotator = PairwiseAutoAnnotator(saving_path="auto_annotations.json")
+annotator = PairwiseAutoAnnotator()
 annotated = annotator.annotate_pairs(outputs_pairs)
 
 print(annotated[-1:])
@@ -99,55 +99,66 @@ print(annotated[-1:])
 #   'preference': 1.0}]
 ```
 
-
-## Running Automatic Evaluation
-
-<details>
-  <summary><b>Installing evaluation with minimal dependencies</b></summary>
-    To install only the auto annotators with minimal additional packages use the following
-    
-    ```
-    MINIMAL_DEPENDENCIES=1
-    pip install alpacafarm[evaluation]
-    ```
-</details>
-
-TODO: add decoding from baseline
-
-To get started and annotate the pairs of outputs of your model use the following code. For more details or functions to use if you have outputs in different formats refer to [annotator README]() or  the notebook above.
-
+If instead of pairs you have a list of sampled outputs, you can use the following.
 
 ```python
-from alpaca_farm.auto_annotations import PairwiseAutoAnnotator
-from alpaca_farm.utils import jload
-
-# load some data
-outputs_baseline = jload("examples/data/outputs_baseline.json")[:6]
-print(outputs_baseline[-1:])
-# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
-#   'input': '',
-#   'output': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]"}]
-
-outputs_rlhf = jload("examples/data/outputs_rlhf.json")[:6]
-print(outputs_rlhf[-1:])
-# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
-#   'input': '',
-#   'output': 'Dear Friends, \n\nI am writing to invite you all to a dinner on Friday evening. It is a casual affair, and I am looking forward to a fun evening catching up with you all. I am planning to make a selection of delicious dishes, ranging from appetizers to mains and desserts. There will be something for everyone to enjoy, and I am sure it will be a night to remember.\n\nThe dinner will be held at my place on Friday, April 17th at 7pm. If you are interested in joining me, please RSVP to this email by Thursday, April 16th. I am looking forward to seeing you all there! \n\nThank you, \n\n[Name]'}]
-
-annotator = PairwiseAutoAnnotator()
-annotated = annotator.annotate_head2head(outputs_1=outputs_baseline, outputs_2=outputs_rlhf,                 saving_path="auto_annotations.json")
-
-print(annotated[-1:])
-# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
-#   'input': '',
-#   'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
-#   'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
-#   'annotator': 'davinci003_3',
-#   'preference': 1.0}]
+multisample_outputs = [dict(instruction="repeat the following", input="yes", output=["yes","no","maybe","repeat"])]
+print(annotator.annotate_samples(multisample_outputs))
+# [{'sample_id': 0,
+#   'instruction': 'repeat the following',
+#   'input': 'yes',
+#   'output_1': 'yes',
+#   'output_2': 'no',
+#   'annotator': 'gpt4_2',
+#   'preference': 1}]
 ```
 
+## Running automatic evaluation
 
-## Running Reference Methods
+<details>
+  <summary><b>Installing auto annotators with minimal dependencies</b></summary>
+    To install only the auto annotators with minimal additional packages use the following
+
+```bash
+pip install alpacafarm --no-deps
+pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
+```
+    
+</details>
+
+The easiest to add your model to the Alpaca Leaderboard is to run the following code, which only requires having outputs for your model on our eval data.
+
+```python
+from alpaca_farm.auto_annotations import alpaca_leaderboard
+from alpaca_farm.utils import jload
+import datasets
+
+# load some data
+alapaca_eval_data = datasets.load_dataset("tatsu-lab/alpaca_farm","alpaca_farm_evaluation")["eval"]
+... # use the data to get outputs for your model
+my_outputs = jload("examples/data/eval_gpt-3.5-turbo-0301.json")
+print(my_outputs[0])
+# {'instruction': 'What are the names of some famous actors that started their careers on Broadway?', 'input': '', 'output': 'Some famous actors that started their careers on Broadway are Hugh Jackman, Meryl Streep, Denzel Washington, Audra McDonald, and Lin-Manuel Miranda.', 'generator': 'gpt-3.5-turbo-0301', 'dataset': 'helpful_base', 'datasplit': 'eval'}
+
+df_results = alpaca_leaderboard(
+    all_outputs=my_outputs,
+    name="My fancy model",
+) # returns a dataframe
+
+print(df_results.to_string(float_format="%.2f"))
+#                                         n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
+# eval_gpt-4-0314                           17.00   805.00  639.00       149.00            1.38     80.43
+# My fancy model                             9.00   804.00  489.00       306.00            1.71     61.38
+# Best-of-16                                14.00   805.00  413.00       378.00            1.75     52.17
+# rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20     9.00   803.00  370.00       424.00            1.75     46.64
+# sft_llama_7b_regen_v7_3ep                 16.00   804.00  320.00       468.00            1.72     40.80
+# Davinci001                                 0.00   805.00  201.00       604.00            1.53     24.97
+```
+
+If you want to compare against our baseline model (Davinci003 with our [prompt](https://github.com/tatsu-lab/alpaca_farm/blob/main/examples/prompts/v0_inputs_noinputs.json)) on your own data, you can decode it using [main_oai_baselines](#OpenAI-models).  
+
+
+## Running reference methods
 
 We provide reference implementations of several methods for learning from pairwise feedback.
 Example code to run these methods can be found in the `examples/` directory.
@@ -231,6 +242,8 @@ python examples/best_of_n.py \
 ```
 
 You can then use the generated samples at `<your_output_path_to_store_samples>` directly with our automated evaluation.
+
+### OpenAI models
 
 ## Citation
 
