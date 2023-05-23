@@ -101,6 +101,14 @@ class TrainingArguments(transformers.TrainingArguments):
     response_len: int = field(default=300)
     policy_model_name_or_path: str = field(default=None)
     reward_model_name_or_path: str = field(default=None)
+    use_fast_tokenizer: bool = field(
+        default=False,
+        metadata={
+            "help": "Use fast tokenizer if True. "
+            "Fast LLaMA tokenizer forces protobuf downgrade to 3.20.3. "
+            "Use fast tokenizer only if you can live with that."
+        },
+    )
 
     def __post_init__(self):
         # Super class' __post_init__ is very complicated; don't do super for now in case mess something up.

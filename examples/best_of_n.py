@@ -136,6 +136,7 @@ def run_rerank(
         [dict_data["prompt"] + output for output in dict_data["output"]] for dict_data in list_dict_data_or_path
     ]
 
+    # TODO(lxuechen): FlashAttention reward model is not correctly loaded.
     top_sequences, top_indices = score.rerank_sequences_with_huggingface(
         sequences=sequences,
         model_name_or_path=scorer_name_or_path,
