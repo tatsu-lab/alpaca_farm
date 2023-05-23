@@ -1,10 +1,13 @@
-RUNNAME="test_rm"
+output_dir=$1
+run_name=$2
+model_name_or_path=$3
+
 torchrun --nproc_per_node=8 --master_port=1234 examples/reward_modeling.py \
   --fp16 False \
   --bf16 True \
   --seed 42 \
-  --model_name_or_path "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_v6_llama_7b_regen_v7_3ep" \
-  --output_dir "/juice5/scr5/nlp/crfm/human-feedback/models/tests/rm" \
+  --model_name_or_path "${model_name_or_path}" \
+  --output_dir "${output_dir}" \
   --model_max_length 512 \
   --num_train_epochs 1 \
   --per_device_train_batch_size 1 \
@@ -21,7 +24,7 @@ torchrun --nproc_per_node=8 --master_port=1234 examples/reward_modeling.py \
   --evaluation_strategy "steps" \
   --logging_steps 10 \
   --wandb_project "alpaca_farm" \
-  --run_name $RUNNAME \
+  --run_name "${run_name}" \
   --fsdp "full_shard auto_wrap" \
   --fsdp_transformer_layer_cls_to_wrap "LlamaDecoderLayer" \
   --tf32 True \

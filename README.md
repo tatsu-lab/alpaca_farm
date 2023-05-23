@@ -66,7 +66,43 @@ Example code to run these methods can be found in the `examples/` directory.
 This includes [supervised fine-tuning](examples/supervised.py), [reward modeding](examples/reward_modeling.py)
 , [RLHF with PPO](examples/rlhf_ppo.py), [best-of-n decoding](examples/best_of_n.py) and more.
 
-### Citation
+Below we give example commands for reproducing the model artifacts in our paper.
+All code are tested with FlashAttention enabled on a machine with 8 80G A100 GPUs linked through NVLink.
+Supervised fine-tuning and reward modeling can fit on 4 80G A100 GPUs, while PPO training currently requires at least 8
+80G GPUs.
+Before running the code below, make sure to convert your LLaMA checkpoint and tokenizer into HuggingFace format and
+store it at `<your_path_to_hf_converted_llama_ckpt_and_tokenizer>`.
+
+### Supervised fine-tuning (SFT)
+
+To replicate our SFT10k model fine-tuned from LLaMA in the paper, run
+
+```bash
+bash examples/scripts/sft.sh \
+  <your_output_dir_for_sft10k> \
+  <your_wandb_run_name> \
+  <your_path_to_hf_converted_llama_ckpt_and_tokenizer>
+```
+
+The SFT10k model will be saved at `<your_output_dir>`, and the name of the wandb run will be `<your_wandb_run_name>`.
+
+### Reward modeling
+
+To replicate our reward model trained on simulated preferences in the paper, run
+
+```bash
+bash examples/scripts/reward_modeling.sh \
+  <your_output_dir> \
+  <your_wandb_run_name> \
+  <your_output_dir_for_sft10k>
+```
+
+### RLHF with PPO
+
+To replicate our RLHF model trained with PPO in the paper, run
+
+```bash
+```
 
 Please consider citing our work if you use the data or code in this repo.
 
