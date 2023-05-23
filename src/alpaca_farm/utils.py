@@ -191,15 +191,3 @@ class InfiniteLoader(object):
         except StopIteration:
             self.iterator = iter(self.loader)
             return next(self.iterator)
-
-def convert_to_dataframe(data : AnyData) -> pd.DataFrame:
-    """Convert input that AlpacaFarm accepts into a dataframe."""
-    if isinstance(data, pd.DataFrame):
-        return data
-    elif isinstance(data, datasets.Dataset):
-        return data.data.to_pandas()
-    elif isinstance(data, list):
-        return pd.DataFrame.from_records(data)
-    else:
-        # try
-        return pd.DataFrame(data)
