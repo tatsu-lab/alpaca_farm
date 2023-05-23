@@ -24,23 +24,20 @@ setuptools.setup(
         "tabulate",
         "transformers>=4.26.0",
         "statsmodels",
-        "black>=23.1.0",
         "tiktoken>=0.3.2",
         "markdown",
         "scikit-learn",
-        "rouge_score",
         "sentencepiece",
-        "pre-commit>=3.2.0",
-        "deepspeed",
         "pandas",
         "wandb",
         "torch",
     ],
     extras_require={
         "full": [
-            # Efficiency.
+            # Training efficiency.
             "flash-attn",
             "apex",
+            "deepspeed",
             # Plotting and visualization.
             "benepar",
             "spacy",
@@ -48,6 +45,11 @@ setuptools.setup(
             "plotly",
             "mapply",
         ],
+        "dev": {
+            "pre-commit>=3.2.0",
+            "black>=23.1.0",
+            "isort",
+        },
     },
     python_requires=">=3.9",
     classifiers=[
