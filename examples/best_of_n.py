@@ -20,7 +20,7 @@ import datasets
 import fire
 import pandas as pd
 
-from alpaca_farm import data_preprocessor, utils
+from alpaca_farm import data_preprocessor, distributed_utils, utils
 from alpaca_farm.inference import decode, score
 from alpaca_farm.types import AnyPath, AnyPathOrNone
 
@@ -90,7 +90,7 @@ def run_decode(
         }
         for dict_data, prompt, output in utils.zip_(list_dict_data, prompts, outputs)
     ]
-    if output_path is not None:
+    if output_path is not None and distributed_utils.is_main_process():
         utils.jdump(return_list_dict_data, output_path)
 
     return return_list_dict_data
@@ -140,14 +140,14 @@ def run_rerank(
         {
             "instruction": dict_data["instruction"],
             "input": dict_data["input"],
-            "output": dict_data["output"],
+            "output": dict_data["output"][top_index],
             "top_sequence": top_sequence,
             "top_index": top_index,
             "scorer_name_or_path": scorer_name_or_path,
         }
         for top_sequence, top_index, dict_data in utils.zip_(top_sequences, top_indices, list_dict_data_or_path)
     ]
-    if output_path is not None:
+    if output_path is not None and distributed_utils.is_main_process():
         utils.jdump(return_list_dict_data, output_path)
 
     return return_list_dict_data
@@ -190,7 +190,7 @@ def run_best_of_n(
         flash_attn=flash_attn,
     )
 
-    if output_path is not None:
+    if output_path is not None and distributed_utils.is_main_process():
         utils.jdump(rerank_return_list_dict_data, output_path)
 
     return rerank_return_list_dict_data
