@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import re
 import time
 import types
 import warnings
