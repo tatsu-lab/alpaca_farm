@@ -67,9 +67,10 @@ This includes [supervised fine-tuning](examples/supervised.py), [reward modeding
 , [RLHF with PPO](examples/rlhf_ppo.py), [best-of-n decoding](examples/best_of_n.py) and more.
 
 Below we give example commands for reproducing the model artifacts in our paper.
-All code are tested with FlashAttention enabled on a machine with 8 80G A100 GPUs linked through NVLink.
-Supervised fine-tuning and reward modeling can fit on 4 80G A100 GPUs, while PPO training currently requires at least 8
-80G GPUs.
+All training code are tested with FlashAttention enabled on a machine with 8 80GB A100 GPUs linked through NVLink.
+Best-of-n decoding was tested with a single 80GB GPU.
+Supervised fine-tuning and reward modeling can fit on 4 80GB A100 GPUs, while PPO training currently requires at least 8
+80GB GPUs.
 Before running the code below, make sure to convert your LLaMA checkpoint and tokenizer into HuggingFace format and
 store it at `<your_path_to_hf_converted_llama_ckpt_and_tokenizer>`.
 
@@ -88,50 +89,55 @@ The SFT10k model will be saved at `<your_output_dir>`, and the name of the wandb
 
 ### Reward modeling
 
-To replicate our reward model trained on **simulated preferences** in the paper, run
+To replicate our reward models trained in in the paper, run
 
 ```bash
 bash examples/scripts/reward_modeling.sh \
-  <your_output_dir_for_sim_rm10k> \
+  <your_output_dir_for_reward_model> \
   <your_wandb_run_name> \
   <your_output_dir_for_sft10k> \
-  "alpaca_noisy_multi_preference"
+  <preference_dataset_name>
 ```
 
-To replicate our reward model trained on **human preferences** in the paper, run
-
-```bash
-bash examples/scripts/reward_modeling.sh \
-  <your_output_dir_for_human_rm10k> \
-  <your_wandb_run_name> \
-  <your_output_dir_for_sft10k> \
-  "alpaca_human_preference"
-```
+Set `<preference_dataset_name>` to `alpaca_noisy_multi_preference` for simulated preference reward model, and
+`alpaca_human_preference` for human preference reward model.
 
 ### RLHF with PPO
 
-To replicate our RLHF PPO model train with simulated preference reward model in the paper, run
+To replicate our RLHF PPO model trained with simulated reward model in the paper, run
 
 ```bash
 bash examples/scripts/rlhf_ppo.sh \
   <your_output_dir> \
   <your_wandb_run_name> \
-  <your_output_dir_for_sim_rm10k> \
-  <your_output_dir_for_sft10k>
-```
-
-To replicate our RLHF PPO model train with human preference reward model in the paper, run
-
-```bash
-bash examples/scripts/rlhf_ppo.sh \
-  <your_output_dir> \
-  <your_wandb_run_name> \
-  <your_output_dir_for_human_rm10k> \
+  <your_output_dir_for_reward_model> \
   <your_output_dir_for_sft10k> \
-  0.02
+  <kl_coef>
 ```
 
-Note the KL penalty coefficient for human reward model PPO is much larger.
+`your_output_dir_for_reward_model` should point to either simulated reward model or human reward model trained according
+to the previous step.
+Note the KL penalty coefficient for human reward PPO is much larger than for simulated PPO.
+Set `<kl_coef>` to 0.0067 for simulated PPO, and 0.0002 for human PPO to recover our original results.
+Performance of PPO typically peaks at 20-80 PPO steps (less than 4 pass through the entire set of instructions).
+
+### Best-of-n decoding
+
+To replicate our best-of-n inference-time decoding results for the AlpacaFarm evaluation suite, run
+
+```bash
+python examples/best_of_n.py \
+  --task "run_best_of_n" \
+  --decoder_name_or_path <your_output_dir_for_decoder> \  # Can be SFT model or even PPO tuned model.
+  --scorer_name_or_path <your_output_dir_for_reward_model> \
+  --num_return_sequences 16 \  # This is the n in best-of-n.
+  --per_device_batch_size 4 \  # Reduce this if you don't have enough memory.
+  --split "eval" \
+  --mixed_precision "bf16" \
+  --tf32 True \
+  --flash_attn True \
+  --output_path <your_output_path_to_store_samples>
+```
 
 ## Citation
 

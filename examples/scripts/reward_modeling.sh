@@ -1,12 +1,14 @@
 output_dir=$1
 run_name=$2
 model_name_or_path=$3
+dataset_name=${4:-"alpaca_noisy_multi_preference"}
 
 torchrun --nproc_per_node=8 --master_port=1234 examples/reward_modeling.py \
   --fp16 False \
   --bf16 True \
   --seed 42 \
   --model_name_or_path "${model_name_or_path}" \
+  --dataset_name "${dataset_name}" \
   --output_dir "${output_dir}" \
   --model_max_length 512 \
   --num_train_epochs 1 \
