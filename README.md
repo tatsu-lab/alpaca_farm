@@ -15,9 +15,9 @@ promoting accessible research on instruction following and alignment.
 
 This repo contains code for
 
-- [simulating preference feedback from language models](#simulating-pairwise-preference)
-- [automated evaluation of instruction-following models](#running-automatic-evaluation)
-- [reference implementations of baseline methods](#running-reference-methods)
+- [simulating preference feedback from language models such as GPT-4](#simulating-pairwise-preference)
+- [automated evaluation for instruction-following models](#running-automatic-evaluation)
+- [validated reference implementations of baseline methods such as PPO and best-of-n](#running-reference-methods)
 
 **Usage and License Notices**: Alpaca is intended and licensed for research use only. The dataset is CC BY NC 4.0 (
 allowing only non-commercial use) and models trained using the dataset should not be used outside of research purposes.
