@@ -19,7 +19,7 @@ import datasets
 import fire
 
 from alpaca_farm import (
-    data_preprocessor,
+    constants, data_preprocessor,
     logging,
     utils,
     types,
@@ -31,8 +31,8 @@ logger = logging.get_logger(__name__)
 MODEL_TO_PROMPTS = {
     "text-davinci-003": "examples/prompts/v0_inputs_noinputs.json",
     "text-davinci-001": "examples/prompts/v0_inputs_noinputs.json",
-    "gpt-3.5-turbo-0301_char1k": "examples/prompts/chatml_v0_char1k_inputs_noinputs.json",
-    "gpt-4-0314_char500": "examples/prompts/chatml_v0_char500_inputs_noinputs.json",
+    "gpt-3.5-turbo-0301": "examples/prompts/chatml_v0_char1k_inputs_noinputs.json",
+    "gpt-4-0314": "examples/prompts/chatml_v0_char500_inputs_noinputs.json",
 }
 
 
@@ -65,7 +65,9 @@ def main_oai_baselines(
 
     if all_instructions is None:
         all_instructions = datasets.load_dataset(
-            "tatsu-lab/alpaca_farm", "alpaca_instructions"
+            "tatsu-lab/alpaca_farm",
+            "alpaca_farm_evaluation",
+            cache_dir=constants.DEFAULT_CACHE_DIR,
         )["eval"]
 
     prompts, list_dict_data, _ = data_preprocessor.format_prompt_with_data_frame(
@@ -100,6 +102,7 @@ def main_oai_baselines(
 
     df_data = utils.convert_to_dataframe(list_dict_data)
     df_data["output"] = completions
+    df_data.to_json(f"examples/data/all_outputs/eval_{model_name}.json", orient="records", indent=2)
 
     results = alpaca_leaderboard(
         all_outputs=df_data,
@@ -108,10 +111,5 @@ def main_oai_baselines(
 
     print(results.to_string(float_format="%.2f"))
 
-
-def main(task, **kwargs):
-    globals()[task](**kwargs)
-
-
 if __name__ == "__main__":
-    fire.Fire(main)
+    fire.Fire(main_oai_baselines)
