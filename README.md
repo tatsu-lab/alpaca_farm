@@ -66,12 +66,13 @@ Example code to run these methods can be found in the `examples/` directory.
 This includes [supervised fine-tuning](examples/supervised.py), [reward modeding](examples/reward_modeling.py)
 , [RLHF with PPO](examples/rlhf_ppo.py), [best-of-n decoding](examples/best_of_n.py) and more.
 
-Below we give example commands for reproducing the model artifacts in our paper.
-All training code are tested with FlashAttention enabled on a machine with 8 80GB A100 GPUs linked through NVLink.
-Best-of-n decoding was tested with a single 80GB GPU.
-Supervised fine-tuning and reward modeling can fit on 4 80GB A100 GPUs, while PPO training currently requires at least 8
+Below we give example commands for reproducing the model artifacts in our paper. Notes:
+
+- All training code are tested with FlashAttention enabled on a machine with 8 80GB A100 GPUs linked through NVLink.
+- Best-of-n decoding was tested with a single 80GB GPU.
+- Supervised fine-tuning and reward modeling can fit on 4 80GB A100 GPUs, while PPO training currently requires at least 8
 80GB GPUs.
-Before running the code below, make sure to convert your LLaMA checkpoint and tokenizer into HuggingFace format and
+- Before running the code below, make sure to convert your LLaMA checkpoint and tokenizer into HuggingFace format and
 store it at `<your_path_to_hf_converted_llama_ckpt_and_tokenizer>`.
 
 ### Supervised fine-tuning (SFT)
@@ -138,6 +139,8 @@ python examples/best_of_n.py \
   --flash_attn True \
   --output_path <your_output_path_to_store_samples>
 ```
+
+You can then use the generated samples at `<your_output_path_to_store_samples>` directly with our automated evaluation.
 
 ## Citation
 
