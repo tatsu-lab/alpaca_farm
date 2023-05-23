@@ -1,16 +1,29 @@
+# Copyright 2023 The Alpaca Team
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
+import re
 from pathlib import Path
+from typing import Any, Callable, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
-from typing import Any, Callable, Optional, Sequence, Union
-import re
-
 import yaml
 
 from .. import types
-from . import decoders, utils as ann_utils
-
+from . import decoders
+from . import utils as ann_utils
 
 CURRENT_DIR = Path(__file__).parent
 logging.getLogger().setLevel(logging.INFO)
@@ -109,7 +122,7 @@ class PairwiseAutoAnnotator:
         is_unique_instructions: bool = True,
         p_label_flip: Optional[float] = None,
         is_multisample_list: bool = True,
-        **decoding_kwargs
+        **decoding_kwargs,
     ) -> list[dict[str, Any]]:
         """Sample pairs of outputs from a sequence of examples and annotate them.
 
@@ -197,7 +210,7 @@ class PairwiseAutoAnnotator:
         outputs_2: Union[Sequence[dict[str, Any]], pd.DataFrame],
         keys_to_merge: Sequence[str] = ("instruction", "input"),
         is_ordered: bool = False,
-        **decoding_kwargs
+        **decoding_kwargs,
     ) -> list[dict[str, Any]]:
         """Head-to-head comparison between two sequence of outputs.
 
@@ -268,7 +281,9 @@ class PairwiseAutoAnnotator:
 
         return self.annotate_pairs(df_to_annotate, **decoding_kwargs)
 
-    def annotate_pairs(self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame], **decoding_kwargs) -> list[dict[str, Any]]:
+    def annotate_pairs(
+        self, to_annotate: Union[Sequence[dict[str, Any]], pd.DataFrame], **decoding_kwargs
+    ) -> list[dict[str, Any]]:
         """Annotates the given examples, which contain both `"output_1"` and `"output_2"` keys.
 
         Parameters
@@ -388,8 +403,7 @@ class PairwiseAutoAnnotator:
             logging.info(f"Annotating {curr_idcs.sum()} examples with {annotator}")
 
             # actual annotation
-            curr_annotated = self.annotators[annotator](df_annotated[curr_idcs],
-                                                        **curr_decoding_kwargs)
+            curr_annotated = self.annotators[annotator](df_annotated[curr_idcs], **curr_decoding_kwargs)
 
             df_annotated = self._merge_annotations(df_annotated, curr_annotated)
 
@@ -402,9 +416,7 @@ class PairwiseAutoAnnotator:
         df_annotated = df_annotated[~df_annotated["preference"].isna()]
 
         # try converting to int now that no nan
-        df_annotated["preference"] = pd.to_numeric(df_annotated["preference"],
-                                                   downcast="integer",
-                                                   errors='ignore')
+        df_annotated["preference"] = pd.to_numeric(df_annotated["preference"], downcast="integer", errors="ignore")
 
         if "is_noisy_label" in df_annotated.columns:
             # dont' store noisy labels
@@ -519,7 +531,7 @@ class SinglePairwiseAutoAnnotator:
         ----------
         df_to_annotate : pd.DataFrame
             Examples to annotate
-            
+
         decoding_kwargs :
             Additional arguments to pass to `fn_decoder`.
         """
@@ -537,7 +549,7 @@ class SinglePairwiseAutoAnnotator:
         completions = self.fn_decoder(prompts=prompts, **self.decoder_kwargs, **decoding_kwargs)
 
         df_to_annotate["preference"] = self.parse_completions(completions=completions)
-        #df_to_annotate["preference"] = df_to_annotate["preference"].astype("Int64")  # allow NaN with int
+        # df_to_annotate["preference"] = df_to_annotate["preference"].astype("Int64")  # allow NaN with int
 
         df_annotated = self.postprocess(df_to_annotate)
 

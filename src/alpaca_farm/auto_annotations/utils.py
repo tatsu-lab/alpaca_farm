@@ -1,17 +1,30 @@
+# Copyright 2023 The Alpaca Team
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import itertools
+import logging
+import random
 import re
 from collections import Counter
 from pathlib import Path
-import random
-import logging
 from typing import Any, Sequence, Union
 
 import numpy as np
 import pandas as pd
 
-from .. import types
-from .. import utils
+from .. import types, utils
 
 DUMMY_EXAMPLE = dict(instruction="1+1=", output_1="2", input="", output_2="3")
 
@@ -203,9 +216,11 @@ def make_prompts(
     return prompts, df_out
 
 
-def convert_ordinal_to_binary_preference(preferences : Union[pd.DataFrame, list[dict[str, Any]]],
-                                  ordinal_preference_key : str="preference",
-                                  binary_preference_key: str="preference"):
+def convert_ordinal_to_binary_preference(
+    preferences: Union[pd.DataFrame, list[dict[str, Any]]],
+    ordinal_preference_key: str = "preference",
+    binary_preference_key: str = "preference",
+):
     """Convert ordinal preference annotations to preference annotations. By merging multiple subcategories together,
     eg A/a/b/B into A/B, or AA/A/a/b/B/BB into A/B.
 
@@ -247,7 +262,7 @@ def convert_ordinal_to_binary_preference(preferences : Union[pd.DataFrame, list[
         is_df = False
         preferences = pd.DataFrame.from_records(preferences)
 
-    preferences[binary_preference_key] = (preferences[ordinal_preference_key].round().astype(int) -1) // 2 + 1
+    preferences[binary_preference_key] = (preferences[ordinal_preference_key].round().astype(int) - 1) // 2 + 1
 
     if not is_df:
         preferences = preferences.to_dict(orient="records")
