@@ -39,7 +39,7 @@ class ModelArguments:
 class DataArguments:
     dataset_path: str = field(default="tatsu-lab/alpaca_farm")
     dataset_name: Literal["alpaca_human_preference", "alpaca_gpt4_preference", "alpaca_noisy_multi_preference"] = field(
-        default="alpaca_human_preference",
+        default="alpaca_noisy_multi_preference",
         metadata={"help": "Name of the dataset. Fetches the human or GPT-4 preference data."},
     )
     eval_size: int = field(
@@ -112,7 +112,9 @@ def main():
         device_map = None
         low_cpu_mem_usage = True
     else:
-        ctx_mgr = common.staggered_object_creation(local_rank=training_args.local_rank)
+        ctx_mgr = common.staggered_object_creation(
+            local_rank=training_args.local_rank, world_size=training_args.world_size
+        )
         device_map = {"": training_args.device.index}
         low_cpu_mem_usage = True
 

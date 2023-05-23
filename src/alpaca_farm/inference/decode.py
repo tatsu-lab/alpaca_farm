@@ -64,7 +64,6 @@ def load_model_and_tokenizer_for_inference(
     logger.warning(f"Loading model for inference: {model_name_or_path}")
 
     local_rank, world_size = distributed_utils.setup()
-    local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
     default_model_kwargs = dict(low_cpu_mem_usage=True, device_map={"": device}, cache_dir=cache_dir)
     if model_kwargs is None:
@@ -139,8 +138,7 @@ def decode_prompts_with_huggingface_given_model(
 
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = tf32  # noqa
 
-    local_rank, world_size = distributed_utils.setup()  # This should not re-setup if already setup.
-    local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
+    local_rank, world_size = distributed_utils.setup()
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
 
     model.generate = common.cast_with_native_amp(model.generate, mixed_precision=mixed_precision)
@@ -156,14 +154,14 @@ def decode_prompts_with_huggingface_given_model(
     ori_data_size = len(prompts)
 
     # Make the prompts set a multiple of world_size * per_device_batch_size by padding with the last prompt.
-    if divide_work:
+    if world_size > 1 and divide_work:
         multiple_of = world_size * per_device_batch_size
     else:
         multiple_of = per_device_batch_size
     new_data_size = multiple_of * int(math.ceil(ori_data_size / multiple_of))
     new_prompts = list(prompts) + [prompts[-1]] * (new_data_size - ori_data_size)
 
-    if divide_work:  # divide into chunks
+    if world_size > 1 and divide_work:  # divide into chunks
         per_worker_size = new_data_size // world_size
         new_prompts = new_prompts[local_rank * per_worker_size : (local_rank + 1) * per_worker_size]
     # TODO(lxuechen): Refactor to tokenize upfront. This way we can pad with tokenizer, and not worry ourselves.
@@ -243,7 +241,7 @@ def decode_prompts_with_huggingface_given_model(
         completions.append(sequences.cpu())
 
     completions = torch.cat(completions, dim=0)
-    if divide_work:
+    if world_size > 1 and divide_work:
         torch.cuda.empty_cache()
         logger.info(f"RANK {local_rank} starting all_gather with {communication_num_chunks} communication_num_chunks")
         mine = einops.rearrange(completions, "(n d) l -> n d l", d=generate_kwargs["num_return_sequences"])

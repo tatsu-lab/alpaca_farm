@@ -35,15 +35,14 @@ def score_sequences_with_huggingface_given_model(
     tokenizer: transformers.PreTrainedTokenizer,
     sequences: Sequence[str],
     per_device_batch_size=20,
-    mixed_precision: Optional[str] = None,
     max_instances=sys.maxsize,
-    tf32=True,
+    mixed_precision: Optional[str] = None,
+    tf32=False,
     divide_work=True,
 ):
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = tf32  # noqa
 
     local_rank, world_size = distributed_utils.setup()
-    local_rank = max(local_rank, 0)  # In non-distributed settings, w/o maxing can yield -1.
     device = torch.device("cuda", local_rank) if torch.cuda.is_available() else torch.device("cpu")
 
     model.forward = common.cast_with_native_amp(model.forward, mixed_precision=mixed_precision)
@@ -53,7 +52,7 @@ def score_sequences_with_huggingface_given_model(
     ori_data_size = len(sequences)
 
     # To make communication work, we round up the dataset to the nearest multiple of the actual batch size.
-    if divide_work:
+    if world_size > 1 and divide_work:
         batch_size = per_device_batch_size * world_size
     else:
         batch_size = per_device_batch_size
@@ -68,7 +67,7 @@ def score_sequences_with_huggingface_given_model(
         disable=not distributed_utils.is_main_process(),
     ):
         batch = new_sequences[start_idx : start_idx + batch_size]
-        if divide_work:
+        if world_size > 1 and divide_work:
             local_batch = batch[local_rank * per_device_batch_size : (local_rank + 1) * per_device_batch_size]
         else:
             local_batch = batch
@@ -82,7 +81,7 @@ def score_sequences_with_huggingface_given_model(
         )
         source = common.prepare_inputs(source, device=device)
         rewards = model(input_ids=source.input_ids, attention_mask=source.attention_mask).rewards
-        if divide_work:
+        if world_size > 1 and divide_work:
             rewards = distributed_utils.all_gather_and_cat(rewards, dim=0)
         return_rewards.extend(rewards.tolist())
 
@@ -94,10 +93,10 @@ def score_sequences_with_huggingface(
     model_name_or_path: str,
     per_device_batch_size=20,
     cache_dir=constants.DEFAULT_CACHE_DIR,
-    mixed_precision: Optional[str] = None,
     max_instances=sys.maxsize,
-    tf32=True,
-    flash_attn=True,  # reward models are trained with flash attention by default
+    mixed_precision: Optional[str] = None,
+    tf32=False,
+    flash_attn=False,
 ) -> List[float]:
     """Score samples with a reward model.
 
@@ -106,8 +105,8 @@ def score_sequences_with_huggingface(
         model_name_or_path: Name of the reward model.
         per_device_batch_size: The batch size per device for evaluating rewards.
         cache_dir: The directory to cache the huggingface model.
-        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         max_instances: The maximum number of prompts to rerank.
+        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
         flash_attn: Turns on flash_attn for the reward model if True.
 
@@ -143,7 +142,8 @@ def rerank_sequences_with_huggingface(
     cache_dir=constants.DEFAULT_CACHE_DIR,
     mixed_precision: Optional[str] = None,
     max_instances=sys.maxsize,
-    tf32=True,
+    tf32=False,
+    flash_attn=False,
 ) -> Tuple[List[List[str]], List[List[int]]]:
     """Rerank samples with a reward model.
 
@@ -153,9 +153,10 @@ def rerank_sequences_with_huggingface(
         rerank_top_k: The number of top samples to return.
         per_device_batch_size: The batch size per device for evaluating rewards.
         cache_dir: The directory to cache the huggingface model.
-        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         max_instances: The maximum number of prompts to rerank.
+        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
+        flash_attn: Turns on flash_attn for the reward model if True.
 
     Returns:
         A tuple with two entries.
@@ -171,6 +172,7 @@ def rerank_sequences_with_huggingface(
         cache_dir=cache_dir,
         mixed_precision=mixed_precision,
         tf32=tf32,
+        flash_attn=flash_attn,
     )
     rewards = einops.rearrange(torch.tensor(rewards), "(b m) -> b m", m=len(sequences[0]))
     # Nested list of "size" (data_size, num_options).
