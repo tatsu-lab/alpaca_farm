@@ -369,9 +369,15 @@ class PPOTrainer(rl_trainer.RLTrainer):
 
 
 def _make_left_padded_tokenizer(
-    model_name_or_path: AnyPath, cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR
+    model_name_or_path: AnyPath, cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR, use_fast: bool = False
 ) -> transformers.PreTrainedTokenizer:
-    tokenizer = transformers.AutoTokenizer.from_pretrained(model_name_or_path, cache_dir=cache_dir, padding_side="left")
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        model_name_or_path,
+        cache_dir=cache_dir,
+        padding_side="left",
+        # Fast LLaMA tokenizer forces protobuf downgrade to 3.20.3. Use fast tokenizer only if you can live with that.
+        use_fast=use_fast,
+    )
     if tokenizer.pad_token is None:
         tokenizer.add_special_tokens(dict(pad_token=constants.DEFAULT_PAD_TOKEN))
     return tokenizer
@@ -379,9 +385,13 @@ def _make_left_padded_tokenizer(
 
 def make_tokenizer(args):
     # policy_tokenizer left pads, since the policy requires batch decoding.
-    # reward_tokenizer also left pads, since we need the embedding of the right most non-pad token.
-    policy_tokenizer = _make_left_padded_tokenizer(args.policy_model_name_or_path)
-    reward_tokenizer = _make_left_padded_tokenizer(args.reward_model_name_or_path)
+    policy_tokenizer = _make_left_padded_tokenizer(
+        args.policy_model_name_or_path, cache_dir=args.cache_dir, use_fast=args.use_fast_tokenizer
+    )
+    # reward_tokenizer left pads, since we need the embedding of the right most non-pad token.
+    reward_tokenizer = _make_left_padded_tokenizer(
+        args.reward_model_name_or_path, cache_dir=args.cache_dir, use_fast=args.use_fast_tokenizer
+    )
     if policy_tokenizer.get_vocab() != reward_tokenizer.get_vocab():
         raise ValueError("AlpacaFarm does not support different tokenizer for policy and reward models.")
     return policy_tokenizer
