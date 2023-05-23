@@ -35,9 +35,9 @@ def score_sequences_with_huggingface_given_model(
     tokenizer: transformers.PreTrainedTokenizer,
     sequences: Sequence[str],
     per_device_batch_size=20,
-    mixed_precision: Optional[str] = None,
     max_instances=sys.maxsize,
-    tf32=True,
+    mixed_precision: Optional[str] = None,
+    tf32=False,
     divide_work=True,
 ):
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = tf32  # noqa
@@ -94,10 +94,10 @@ def score_sequences_with_huggingface(
     model_name_or_path: str,
     per_device_batch_size=20,
     cache_dir=constants.DEFAULT_CACHE_DIR,
-    mixed_precision: Optional[str] = None,
     max_instances=sys.maxsize,
-    tf32=True,
-    flash_attn=True,  # reward models are trained with flash attention by default
+    mixed_precision: Optional[str] = None,
+    tf32=False,
+    flash_attn=False,
 ) -> List[float]:
     """Score samples with a reward model.
 
@@ -106,8 +106,8 @@ def score_sequences_with_huggingface(
         model_name_or_path: Name of the reward model.
         per_device_batch_size: The batch size per device for evaluating rewards.
         cache_dir: The directory to cache the huggingface model.
-        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         max_instances: The maximum number of prompts to rerank.
+        mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
         flash_attn: Turns on flash_attn for the reward model if True.
 
@@ -143,7 +143,8 @@ def rerank_sequences_with_huggingface(
     cache_dir=constants.DEFAULT_CACHE_DIR,
     mixed_precision: Optional[str] = None,
     max_instances=sys.maxsize,
-    tf32=True,
+    tf32=False,
+    flash_attn=False,
 ) -> Tuple[List[List[str]], List[List[int]]]:
     """Rerank samples with a reward model.
 
@@ -156,6 +157,7 @@ def rerank_sequences_with_huggingface(
         mixed_precision: Whether to use mixed precision. If None, no casting will be performed.
         max_instances: The maximum number of prompts to rerank.
         tf32: Whether to use tensorfloat32 for matrix multiplication.
+        flash_attn: Turns on flash_attn for the reward model if True.
 
     Returns:
         A tuple with two entries.
@@ -171,6 +173,7 @@ def rerank_sequences_with_huggingface(
         cache_dir=cache_dir,
         mixed_precision=mixed_precision,
         tf32=tf32,
+        flash_attn=flash_attn,
     )
     rewards = einops.rearrange(torch.tensor(rewards), "(b m) -> b m", m=len(sequences[0]))
     # Nested list of "size" (data_size, num_options).
