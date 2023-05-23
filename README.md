@@ -88,21 +88,50 @@ The SFT10k model will be saved at `<your_output_dir>`, and the name of the wandb
 
 ### Reward modeling
 
-To replicate our reward model trained on simulated preferences in the paper, run
+To replicate our reward model trained on **simulated preferences** in the paper, run
 
 ```bash
 bash examples/scripts/reward_modeling.sh \
-  <your_output_dir> \
+  <your_output_dir_for_sim_rm10k> \
   <your_wandb_run_name> \
-  <your_output_dir_for_sft10k>
+  <your_output_dir_for_sft10k> \
+  "alpaca_noisy_multi_preference"
+```
+
+To replicate our reward model trained on **human preferences** in the paper, run
+
+```bash
+bash examples/scripts/reward_modeling.sh \
+  <your_output_dir_for_human_rm10k> \
+  <your_wandb_run_name> \
+  <your_output_dir_for_sft10k> \
+  "alpaca_human_preference"
 ```
 
 ### RLHF with PPO
 
-To replicate our RLHF model trained with PPO in the paper, run
+To replicate our RLHF PPO model train with simulated preference reward model in the paper, run
 
 ```bash
+bash examples/scripts/rlhf_ppo.sh \
+  <your_output_dir> \
+  <your_wandb_run_name> \
+  <your_output_dir_for_sim_rm10k> \
+  <your_output_dir_for_sft10k>
 ```
+
+To replicate our RLHF PPO model train with human preference reward model in the paper, run
+
+```bash
+bash examples/scripts/rlhf_ppo.sh \
+  <your_output_dir> \
+  <your_wandb_run_name> \
+  <your_output_dir_for_human_rm10k> \
+  <your_output_dir_for_sft10k> \
+  0.02
+```
+
+Note the KL penalty coefficient for human reward model PPO is much larger.
 
 Please consider citing our work if you use the data or code in this repo.
 
