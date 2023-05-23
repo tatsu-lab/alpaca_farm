@@ -21,6 +21,8 @@ This repo contains code for
 - [automated evaluation for instruction-following models](#running-automatic-evaluation)
 - [validated reference implementations of baseline methods such as PPO and best-of-n](#running-reference-methods)
 
+The data needed to run our code is hosted on HuggingFace: https://huggingface.co/datasets/tatsu-lab/alpaca_farm.
+
 **Usage and License Notices**: Alpaca is intended and licensed for research use only. The dataset is CC BY NC 4.0 (
 allowing only non-commercial use) and models trained using the dataset should not be used outside of research purposes.
 The weight diff is also CC BY NC 4.0 (allowing only non-commercial use).
