@@ -14,13 +14,16 @@
 
 import os
 import pathlib
-from typing import List, Optional, Sequence, Union
+from typing import Any, List, Optional, Sequence, Union
 
+import pandas as pd
 import torch
+import datasets
 from torch import Tensor
 
 AnyPath = Union[str, os.PathLike, pathlib.Path]
 AnyPathOrNone = Optional[AnyPath]
+AnyData = Union[Sequence[dict[str, Any]], pd.DataFrame, datasets.Dataset]
 
 Numeric = Union[int, float]
 Tensors = Sequence[Tensor]
