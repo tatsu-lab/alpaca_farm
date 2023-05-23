@@ -68,7 +68,6 @@ def make_binary_reward_modeling_data_module(
         df=train_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
-        df_postprocessor=data_args.train_df_postprocessor,
         end_sequence_with_eos=training_args.end_sequence_with_eos,
     )
     train_dataset, eval_dataset = split_train_into_train_and_eval(
