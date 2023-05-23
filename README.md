@@ -133,8 +133,15 @@ bash examples/scripts/rlhf_ppo.sh \
 
 Note the KL penalty coefficient for human reward model PPO is much larger.
 
+## Citation
+
 Please consider citing our work if you use the data or code in this repo.
 
 ```
-TODO
+@misc{alpaca,
+  author = {Yann Dubois and Xuechen Li and Rohan Taori and Tianyi Zhang and Ishaan Gulrajani and Jimmy Ba and Carlos Guestrin and Percy Liang and Tatsunori B. Hashimoto },
+  title = {AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback},
+  year = {2023},
+  howpublished = {\url{https://tatsu-lab.github.io/alpaca_farm_paper.pdf}},
+}
 ```
