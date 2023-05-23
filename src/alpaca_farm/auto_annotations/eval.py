@@ -35,14 +35,19 @@ PRECOMPUTED_LEADERBOARD = {"annotators/annotator_pool_v0/configs.yaml":{
   'n_wins_base': 306.0,
   'standard_error': 1.707975918938111,
   'win_rate': 61.38059701492538},
-"ChatGPT":  {'n_draws': 9.0,
-  'n_total': 804.0,
-  'n_wins': 489.0,
-  'n_wins_base': 306.0,
-  'standard_error': 1.707975918938111,
-  'win_rate': 61.38059701492538}
-}
-}
+"LLaMA 7B":  {'n_draws': 0.0,
+  'n_total': 786.0,
+  'n_wins': 94.0,
+  'n_wins_base': 692.0,
+  'standard_error': 1.1581361013229673,
+  'win_rate': 11.959287531806616},
+"GPT4": {'n_draws': 17.0,
+  'n_total': 805.0,
+  'n_wins': 639.0,
+  'n_wins_base': 149.0,
+  'standard_error': 1.3753918376580683,
+  'win_rate': 80.43478260869566},
+}}
 
 
 def alpaca_leaderboard(
