@@ -48,6 +48,9 @@ As players compete in the battle royale game, they will receive experience and l
 4. Levelling up:
 At the end of each game, players will level up their character and receive various bonuses depending on the level. These bonuses could range from extra health to increased sprint speed or more damage while in combat. As players gain levels, they can choose to upgrade their character with more powerful abilities and powers.
 
+5. Challenges:
+Players can also complete
+
 #### Output (b) for example 1:
 The newly launched mobile game offers a thrilling battle royale experience with a superhero and villain theme. Players jump out of their cars and go head-to-head in a fight to the finish line. Each round features a different set of powerful superheroes and villainous villains, and the winner is the player who survives the longest. Along the way, they can collect health items and upgrade their powers to become the ultimate superhero or villain. The game offers a lively and vibrant art style and a visually appealing plot to keep the players engaged until the very end.
 

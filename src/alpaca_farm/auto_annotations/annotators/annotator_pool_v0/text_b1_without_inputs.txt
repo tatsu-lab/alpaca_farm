@@ -86,7 +86,7 @@ The survey found that some workers believe remote work is better than office wor
 (a)
 
 ## Real task:
-Now is your turn, please carefully review each instruction and its corresponding outputs before selecting the best output.
+Now is your turn, please carefully review each instruction and its corresponding outputs before selecting the best output. <|endofprompt|>
 
 ### Instruction:
 {instruction}

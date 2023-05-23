@@ -12,7 +12,7 @@ Output (a): The capital of France is Paris.
 Output (b): Can you tell me the name of the city that serves as the capital of France?
 Best output: (b)
 
-Now is your turn, please carefully review each instruction and its corresponding outputs before selecting the best output.
+Now is your turn, please carefully review each instruction and its corresponding outputs before selecting the best output. <|endofprompt|>
 
 Instruction: {instruction}
 Output (a): {output_1}
