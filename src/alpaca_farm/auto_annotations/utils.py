@@ -16,20 +16,24 @@ import copy
 import itertools
 import logging
 import random
+import os
+import pathlib
 import re
 from collections import Counter
 from pathlib import Path
 from typing import Any, Sequence, Union
 
+import datasets
 import numpy as np
 import pandas as pd
 
-from .. import types, utils
-
+# don't load from utils to avoid unnecessary dependencies
+AnyPath = Union[str, os.PathLike, pathlib.Path]
+AnyData = Union[Sequence[dict[str, Any]], pd.DataFrame, datasets.Dataset]
 DUMMY_EXAMPLE = dict(instruction="1+1=", output_1="2", input="", output_2="3")
 
 
-def read_or_return(to_read: Union[types.AnyPath, str], **kwargs):
+def read_or_return(to_read: Union[AnyPath, str], **kwargs):
     """Read a file or return the input if it is already a string."""
     try:
         with open(Path(to_read), **kwargs) as f:
@@ -73,7 +77,7 @@ def shuffle_pairwise_preferences(df: pd.DataFrame, arr_is_shuffle: Sequence[int]
 
 def is_derangement(arr1, arr2):
     """Whether 2 arrays are derangements of one another"""
-    return all([a != b for a, b in utils.zip_(arr1, arr2)])
+    return all([a != b for a, b in zip(arr1, arr2)])
 
 
 def random_derangement(arr, max_loop=10, seed=None):
@@ -268,3 +272,15 @@ def convert_ordinal_to_binary_preference(
         preferences = preferences.to_dict(orient="records")
 
     return preferences
+
+def convert_to_dataframe(data : AnyData) -> pd.DataFrame:
+    """Convert input that AlpacaFarm accepts into a dataframe."""
+    if isinstance(data, pd.DataFrame):
+        return data
+    elif isinstance(data, datasets.Dataset):
+        return data.data.to_pandas()
+    elif isinstance(data, list):
+        return pd.DataFrame.from_records(data)
+    else:
+        # try
+        return pd.DataFrame(data)
