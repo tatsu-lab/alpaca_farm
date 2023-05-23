@@ -45,6 +45,15 @@ def apex_is_installed():
         return False
 
 
+def flash_attn_is_installed():
+    try:
+        import flash_attn
+
+        return True
+    except ImportError as _:
+        return False
+
+
 class staggered_object_creation(object):
     """
     Objection creation in a distributed setting could be very RAM-intensive.
@@ -100,8 +109,7 @@ def make_generative_lm(
         )
         flash_attn = False
 
-    if flash_attn:
-        # If flash-attn is not installed, things will break here.
+    if flash_attn and flash_attn_is_installed():
         from .flash_models import flash_llama
 
         model_cls = flash_llama.LlamaForCausalLM
