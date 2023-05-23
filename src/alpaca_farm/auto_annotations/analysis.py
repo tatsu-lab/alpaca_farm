@@ -42,8 +42,8 @@ def head2head_to_metrics(preferences: Union[pd.Series, Sequence]) -> dict[str, i
     win_rate = series_preferences.mean()
 
     return dict(
-        win_rate=win_rate,
-        standard_error=series_preferences.sem(),
+        win_rate=win_rate * 100,
+        standard_error=series_preferences.sem() * 100,
         n_wins=n_wins,
         n_wins_base=n_wins_base,
         n_draws=n_draws,
