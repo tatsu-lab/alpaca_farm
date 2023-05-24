@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<a href="https://crfm.stanford.edu/alpaca/" target="_blank"><img src="assets/AlpacaFarm_big.png" alt="AlpacaFarm" style="width: 50%; min-width: 300px; display: block; margin: auto;"></a>
+<img src="assets/AlpacaFarm_big.png" alt="AlpacaFarm" style="width: 50%; min-width: 300px; display: block; margin: auto;">
 </p>
 
 # AlpacaFarm: A Simulation Framework for Methods that <br/>Learn from Human Feedback
