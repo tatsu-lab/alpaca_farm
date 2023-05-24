@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<img src="assets/AlpacaFarm_big.png" alt="AlpacaFarm" style="width: 50%; min-width: 300px; display: block; margin: auto;">
+<a href="https://crfm.stanford.edu/alpaca/" target="_blank"><img src="assets/AlpacaFarm_big.png" alt="AlpacaFarm" style="width: 50%; min-width: 300px; display: block; margin: auto;"></a>
 </p>
 
 # AlpacaFarm: A Simulation Framework for Methods that <br/>Learn from Human Feedback
@@ -162,7 +162,15 @@ path_to_outputs = "examples/data/eval_gpt-3.5-turbo-0301.json"
 # [{'instruction': 'What are the names of some famous actors that started their careers on Broadway?', 'input': '', 'output': 'Some famous actors that started their careers on Broadway are Hugh Jackman, Meryl Streep, Denzel Washington, Audra McDonald, and Lin-Manuel Miranda.', 'generator': 'gpt-3.5-turbo-0301', 'dataset': 'helpful_base', 'datasplit': 'eval'},
 # ...]
 
-alpaca_leaderboard(path_or_all_outputs=path_to_outputs, name="My fancy model")
+alpaca_leaderboard(path_or_all_outputs=path_to_outputs, name="My fancy model", is_print_metrics=True)
+#                                         n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
+# eval_gpt-4-0314                           17.00   805.00  639.00       149.00            1.38     80.43
+# My fancy model                             9.00   804.00  489.00       306.00            1.71     61.38
+# Best-of-16                                14.00   805.00  413.00       378.00            1.75     52.17
+# rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20     9.00   803.00  370.00       424.00            1.75     46.64
+# sft_llama_7b_regen_v7_3ep                 16.00   804.00  320.00       468.00            1.72     40.80
+# Davinci001                                 0.00   805.00  201.00       604.00            1.53     24.97
+# Davinci001                                 0.00   786.0    94.00       692.00          1.16     11.96
 ```
 
 If you want to compare against our baseline model (Davinci003 with

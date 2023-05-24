@@ -71,7 +71,7 @@ def alpaca_leaderboard(
     annotators_config: ann_utils.AnyPath = "annotators/annotator_pool_v0/configs.yaml",
     name: str = "Current method",
     is_add_reference_methods: bool = True,
-    is_print_metrics: bool = True,
+    is_print_metrics: bool = False,
     **kwargs,
 ) -> pd.DataFrame:
     """Add the given model to the Alpaca leaderboard.
@@ -122,16 +122,12 @@ def alpaca_leaderboard(
         )
 
     annotator = PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
-    annotated = annotator.annotate_head2head(
-        outputs_1=outputs_baseline, outputs_2=all_outputs
-    )
-    all_metrics[name] = head2head_to_metrics(
-        preferences=[a["preference"] for a in annotated]
-    )
+    annotated = annotator.annotate_head2head(outputs_1=outputs_baseline, outputs_2=all_outputs)
+    all_metrics[name] = head2head_to_metrics(preferences=[a["preference"] for a in annotated])
 
     df_results = pd.DataFrame(all_metrics).T.sort_values(by="win_rate", ascending=False)
 
     if is_print_metrics:
         print(df_results.to_string(float_format="%.2f"))
-
-    return df_results
+    else:
+        return df_results
