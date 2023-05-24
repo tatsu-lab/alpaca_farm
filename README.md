@@ -1,5 +1,5 @@
 <p align="center" width="100%">
-<a href="https://crfm.stanford.edu/alpaca/" target="_blank"><img src="assets/AlpacaFarm_big.png" alt="AlpacaFarm" style="width: 50%; min-width: 300px; display: block; margin: auto;"></a>
+<img src="assets/AlpacaFarm_big.png" alt="AlpacaFarm" style="width: 50%; min-width: 300px; display: block; margin: auto;">
 </p>
 
 # AlpacaFarm: A Simulation Framework for Methods that <br/>Learn from Human Feedback
@@ -71,7 +71,7 @@ example:** [![Using](https://colab.research.google.com/assets/colab-badge.svg)](
 
 ```bash
 pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r ./src/alpaca_farm/auto_annotations/requirements.txt
+pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
 ```
 
 </details>
@@ -136,40 +136,33 @@ print(annotator.annotate_samples(multisample_outputs))
 
 ```bash
 pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r ./src/alpaca_farm/auto_annotations/requirements.txt
+pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
 ```
 
 </details>
+
+To get started, set the environment variable OPENAI_API_KEY to your OpenAI API key, and (optionally) OPENAI_ORG to the organization ID. You can do this by running
+
+```bash
+export OPENAI_API_KEY="sk..."
+```
 
 The easiest to add your model to the Alpaca Leaderboard is to run the following code, which only requires having outputs
 for your model on our eval data.
 
 ```python
 from alpaca_farm.auto_annotations import alpaca_leaderboard
-import json, datasets
+import datasets
 
-# load some data
-alapaca_eval_data = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_farm_evaluation")["eval"]
-...  # use the data to get outputs for your model
-with open("examples/data/eval_gpt-3.5-turbo-0301.json") as f:
-    my_outputs = json.load(f)
-print(my_outputs[0])
-# {'instruction': 'What are the names of some famous actors that started their careers on Broadway?', 'input': '', 'output': 'Some famous actors that started their careers on Broadway are Hugh Jackman, Meryl Streep, Denzel Washington, Audra McDonald, and Lin-Manuel Miranda.', 'generator': 'gpt-3.5-turbo-0301', 'dataset': 'helpful_base', 'datasplit': 'eval'}
+# predict on Alpaca eval data
+alpaca_eval_data = datasets.load_dataset("tatsu-lab/alpaca_farm", "alpaca_farm_evaluation")["eval"]
+...  # use the data to get outputs for your model and save it
+path_to_outputs = "examples/data/eval_gpt-3.5-turbo-0301.json"
+# outputs should be a list of json as such:
+# [{'instruction': 'What are the names of some famous actors that started their careers on Broadway?', 'input': '', 'output': 'Some famous actors that started their careers on Broadway are Hugh Jackman, Meryl Streep, Denzel Washington, Audra McDonald, and Lin-Manuel Miranda.', 'generator': 'gpt-3.5-turbo-0301', 'dataset': 'helpful_base', 'datasplit': 'eval'},
+# ...]
 
-df_results = alpaca_leaderboard(
-    all_outputs=my_outputs,
-    name="My fancy model",
-)  # returns a dataframe
-
-print(df_results.to_string(float_format="%.2f"))
-#                                         n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
-# eval_gpt-4-0314                           17.00   805.00  639.00       149.00            1.38     80.43
-# My fancy model                             9.00   804.00  489.00       306.00            1.71     61.38
-# Best-of-16                                14.00   805.00  413.00       378.00            1.75     52.17
-# rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20     9.00   803.00  370.00       424.00            1.75     46.64
-# sft_llama_7b_regen_v7_3ep                 16.00   804.00  320.00       468.00            1.72     40.80
-# Davinci001                                 0.00   805.00  201.00       604.00            1.53     24.97
-# Davinci001                                 0.00   786.0    94.00       692.0.00          1.16     11.96
+alpaca_leaderboard(path_or_all_outputs=path_to_outputs, name="My fancy model")
 ```
 
 If you want to compare against our baseline model (Davinci003 with
