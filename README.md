@@ -14,7 +14,7 @@ like [RLHF](https://arxiv.org/abs/2203.02155) are complex and costly to run.
 AlpacaFarm is a simulator that enables research and development on learning from feedback at a fraction of the usual
 cost, promoting accessible research on instruction following and alignment.
 
-Please read our [paper](https://tatsu-lab.github.io/alpaca_farm_paper.pdf)
+Please read our [paper](https://arxiv.org/abs/2305.14387)
 and [blog post](https://crfm.stanford.edu/2023/05/22/alpaca-farm.html) for details on our research findings.
 
 This repo contains code for
@@ -288,10 +288,12 @@ You can then use the generated samples at `<save_path>` directly with our automa
 Please consider citing our work if you use the data or code in this repo.
 
 ```
-@misc{alpaca,
-  author = {Yann Dubois and Xuechen Li and Rohan Taori and Tianyi Zhang and Ishaan Gulrajani and Jimmy Ba and Carlos Guestrin and Percy Liang and Tatsunori B. Hashimoto },
-  title = {AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback},
-  year = {2023},
-  howpublished = {\url{https://github.com/tatsu-lab/alpaca_farm}},
+@misc{dubois2023alpacafarm,
+      title={AlpacaFarm: A Simulation Framework for Methods that Learn from Human Feedback}, 
+      author={Yann Dubois and Xuechen Li and Rohan Taori and Tianyi Zhang and Ishaan Gulrajani and Jimmy Ba and Carlos Guestrin and Percy Liang and Tatsunori B. Hashimoto},
+      year={2023},
+      eprint={2305.14387},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
 }
 ```
