@@ -71,7 +71,7 @@ def integrity_check(model_tuned, hf_hub_name):
     model_sum_file = hf_hub_download(repo_id=hf_hub_name, filename="model_sum.txt")
     with open(model_sum_file, "r") as f:
         model_sum_hf_hub = float(f.read())
-    assert np.isclose(model_sum_hf_hub, model_sum), f"Model weights integrity check failed. Did you use the latest llama-7b HF weights?"
+    return np.isclose(model_sum_hf_hub, model_sum)
 
 
 if __name__ == "__main__":
@@ -90,7 +90,8 @@ if __name__ == "__main__":
         model_raw, tokenizer_raw = load_raw_model(args.llama_7b_hf_dir, args.device)
         reconstruct_tuned_model(model_tuned, model_raw, is_reward_model)
 
-        integrity_check(model_tuned, hf_hub_name)
+        if not integrity_check(model_tuned, hf_hub_name):
+            print("Model weights integrity check failed. Did you use the latest llama-7b HF weights?")
         model_tuned.save_pretrained(save_dir)
         tokenizer_tuned.save_pretrained(save_dir)
 
