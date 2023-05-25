@@ -23,7 +23,7 @@ This repo contains code for
 - [automated evaluation for instruction-following models](#running-automatic-evaluation)
 - [validated reference implementations of baseline methods such as PPO and best-of-n](#running-reference-methods)
 
-The data needed to run our code is hosted on HuggingFace: https://huggingface.co/datasets/tatsu-lab/alpaca_farm.
+The data needed to run our code is hosted on HuggingFace: <https://huggingface.co/datasets/tatsu-lab/alpaca_farm>.
 
 **Usage and License Notices**: AlpacaFarm is intended and licensed for research use only.
 The dataset is CC BY NC 4.0 (allowing only non-commercial use) and models trained using the dataset should not be used
@@ -275,12 +275,43 @@ python examples/oai_baselines.py \
 
 You can then use the generated samples at `<save_path>` directly with our automated evaluation.
 
-## Coming soon...
+## Downloading pre-tuned AlpacaFarm models
+
+We provide model checkpoints for reward models and all our reference methods, listed in Table 2 of our [paper](https://arxiv.org/abs/2305.14387). Concretely, we tune each reference method in AlpacaFarm simulation and on human preference data and release both versions. The current list of models (available [here](https://huggingface.co/tatsu-lab)) includes:
+
+- `sft10k`, the supervised learning base model that we collect preference data with.
+- `reward-model-sim`, the reward model trained on AlpacaFarm preference data.
+- `reward-model-human`, the reward model trained on human preference data.
+- `ppo-sim`, the best PPO checkpoint trained in simulation.
+- `ppo-human`, the best PPO checkpoint trained on human data.
+- `expiter-sim`, the best expert iteration checkpoint trained in simulation.
+- `expiter-human`, the best expert iteration checkpoint trained on human data.
+- `feedme-sim`, the FeedME method trained on simulated preferences.
+- `feedme-human`, the FeedME method trained on human preferences.
+- `reward-condition-sim`, the reward conditioning method trained on simulated preferences.
+
+To download these checkpoints, first make sure to have a LLaMA-7B checkpoint [converted into the huggingface format](https://huggingface.co/docs/transformers/main/model_doc/llama).
+Then, run the following:
+
+```
+python -m pretrained_models.recover_model_weights \
+  --llama-7b-hf-dir <your_path_to_hf_converted_llama_ckpt_and_tokenizer> \
+  --alpaca-farm-model-name <one_of_the_model_names_from_above> \
+  --models-save-dir <dir_to_save_all_models>
+```
+
+For ease of use, the following command downloads all AlpacaFarm models:
+
+```
+python -m pretrained_models.recover_model_weights \
+  --llama-7b-hf-dir <your_path_to_hf_converted_llama_ckpt_and_tokenizer> \
+  --alpaca-farm-model-name all
+```
+
+## Coming soon
 
 - [ ] Quark implementation
 - [ ] Expert iteration implementation
-- [ ] Weight diffs for generation models
-- [ ] Model checkpoints for reward models
 - [ ] Human evaluation of generated samples from leaderboard models
 
 ## Citation
