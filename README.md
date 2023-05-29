@@ -23,7 +23,7 @@ This repo contains code for
 - [automated evaluation for instruction-following models](#running-automatic-evaluation)
 - [validated reference implementations of baseline methods such as PPO and best-of-n](#running-reference-methods)
 
-The data needed to run our code is hosted on HuggingFace: <https://huggingface.co/datasets/tatsu-lab/alpaca_farm>.
+The data needed to run our code is hosted on Hugging Face: <https://huggingface.co/datasets/tatsu-lab/alpaca_farm>.
 
 **Usage and License Notices**: AlpacaFarm is intended and licensed for research use only.
 The dataset is CC BY NC 4.0 (allowing only non-commercial use) and models trained using the dataset should not be used
@@ -191,7 +191,7 @@ Below we give example commands for reproducing the model artifacts in our paper.
 - Supervised fine-tuning and reward modeling can fit on 4 80GB A100 GPUs, while PPO training currently requires at least
   8
   80GB GPUs.
-- Before running the code below, make sure to convert your LLaMA checkpoint and tokenizer into HuggingFace format and
+- Before running the code below, make sure to convert your LLaMA checkpoint and tokenizer into Hugging Face format and
   store it at `<your_path_to_hf_converted_llama_ckpt_and_tokenizer>`.
 
 ### Supervised fine-tuning (SFT)
@@ -290,7 +290,7 @@ We provide model checkpoints for reward models and all our reference methods, li
 - `feedme-human`, the FeedME method trained on human preferences.
 - `reward-condition-sim`, the reward conditioning method trained on simulated preferences.
 
-To download these checkpoints, first make sure to have a LLaMA-7B checkpoint [converted into the huggingface format](https://huggingface.co/docs/transformers/main/model_doc/llama).
+To download these checkpoints, first make sure to have a LLaMA-7B checkpoint [converted into the Hugging Face format](https://huggingface.co/docs/transformers/main/model_doc/llama).
 Then, run the following:
 
 ```
