@@ -175,7 +175,7 @@ alpaca_leaderboard(path_or_all_outputs=path_to_outputs, name="My fancy model", i
 
 If you want to compare against our baseline model (Davinci003 with
 our [prompt](https://github.com/tatsu-lab/alpaca_farm/blob/main/examples/prompts/v0_inputs_noinputs.json)) on your own
-data, you can decode it using [main_oai_baselines](#OpenAI-models).
+data, you can decode it using [main_oai_baselines](#openai-models).
 
 ## Running reference methods
 
@@ -291,7 +291,15 @@ We provide model checkpoints for reward models and all our reference methods, li
 - `reward-condition-sim`, the reward conditioning method trained on simulated preferences.
 
 To download these checkpoints, first make sure to have a LLaMA-7B checkpoint [converted into the huggingface format](https://huggingface.co/docs/transformers/main/model_doc/llama).
-Then, run the following:
+Then, run the following to download all AlpacaFarm models:
+
+```
+python -m pretrained_models.recover_model_weights \
+  --llama-7b-hf-dir <your_path_to_hf_converted_llama_ckpt_and_tokenizer> \
+  --alpaca-farm-model-name all
+```
+
+Or, specify a particular model name to download just that model:
 
 ```
 python -m pretrained_models.recover_model_weights \
@@ -300,13 +308,7 @@ python -m pretrained_models.recover_model_weights \
   --models-save-dir <dir_to_save_all_models>
 ```
 
-For ease of use, the following command downloads all AlpacaFarm models:
-
-```
-python -m pretrained_models.recover_model_weights \
-  --llama-7b-hf-dir <your_path_to_hf_converted_llama_ckpt_and_tokenizer> \
-  --alpaca-farm-model-name all
-```
+To download either of the reward models individually, you'll need to have `sft10k` downloaded first to `<dir_to_save_all_models>`.
 
 ## Coming soon
 

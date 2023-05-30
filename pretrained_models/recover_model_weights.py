@@ -5,7 +5,7 @@ import torch
 import transformers
 from huggingface_hub import HfApi, hf_hub_download
 
-from alpaca_farm.models.reward_model import RewardModel
+from alpaca_farm.models.reward_model import RewardModel, RewardConfig
 from alpaca_farm.utils import stable_resize_token_embeddings_and_tokenizer
 
 
@@ -23,14 +23,18 @@ def build_argparse(model_names):
     parser.add_argument('--alpaca-farm-model-name', choices=model_names + ['all'], default='all', required=True)
     parser.add_argument('--models-save-dir', default='./pretrained_models', type=str)
     parser.add_argument('--device', default='cpu', type=str)
+    parser.add_argument('--path-to-sft10k', type=str, help='Necessary for reconstructing reward models.')
     args = parser.parse_args()
+    if args.path_to_sft10k is None:
+        args.path_to_sft10k = os.path.join(args.models_save_dir, 'sft10k')
     return args
 
 
-def load_weight_diff(hf_hub_name, is_reward_model=False, device="cpu"):
+def load_weight_diff(hf_hub_name, is_reward_model=False, device="cpu", path_to_sft10k=None):
     if is_reward_model:
         model_tuned = RewardModel.from_pretrained(
-            hf_hub_name, device_map={"": torch.device(device)}, torch_dtype=torch.float32, flash_attn=False
+            hf_hub_name, device_map={"": torch.device(device)}, torch_dtype=torch.float32, flash_attn=False,
+            config=RewardConfig(backbone_model_name_or_path=path_to_sft10k)
         )
     else:
         model_tuned = transformers.AutoModelForCausalLM.from_pretrained(
@@ -86,7 +90,7 @@ if __name__ == "__main__":
         is_reward_model = 'reward-model' in model_name
         save_dir = os.path.join(args.models_save_dir, model_name)
 
-        model_tuned, tokenizer_tuned = load_weight_diff(hf_hub_name, is_reward_model, args.device)
+        model_tuned, tokenizer_tuned = load_weight_diff(hf_hub_name, is_reward_model, args.device, args.path_to_sft10k)
         model_raw, tokenizer_raw = load_raw_model(args.llama_7b_hf_dir, args.device)
         reconstruct_tuned_model(model_tuned, model_raw, is_reward_model)
 
