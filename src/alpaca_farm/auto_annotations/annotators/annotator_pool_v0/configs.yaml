@@ -55,8 +55,8 @@ gpt4_4 : # gpt-4-0314_pairwise_v2_b1_chatml-chat_reasoning_temp=1.0
     tokens_to_avoid: ['Both', 'Neither', 'None', ' Both', ' Neither', 'Either', 'depends', 'context', 'It', 'both', 'Sorry']
     tokens_to_favor: ["Output (a)", "Output (b)"]
   outputs_to_match:
-    1: 'Output \(a\)'
-    2: 'Output \(b\)'
+    1: '(?:^|\n)Output \(a\)'
+    2: '(?:^|\n)Output \(b\)'
   batch_size: 1
 
 gpt4_5 : # gpt-4-0314_pairwise_diverse-joeX_v0_b5_chatml-prompt_short_temp=1.0
