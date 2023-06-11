@@ -39,9 +39,9 @@ class DataArguments:
         default="tatsu-lab/alpaca_farm",
         metadata={
             "help": "Path to the dataset. Either points to a location on Hugging Face hub or a local folder. "
-                    "If the path points to a local folder, the folder must be structured properly "
-                    "(see documentation for datasets.load_dataset)."
-        }
+            "If the path points to a local folder, the folder must be structured properly "
+            "(see documentation for datasets.load_dataset)."
+        },
     )
     dataset_name: Optional[str] = field(
         default="alpaca_instructions",
@@ -49,13 +49,13 @@ class DataArguments:
     )
     train_splits: List[str] = field(
         default_factory=lambda: ["sft"],
-        metadata={"help": "Splits to use for training. This must not be an empty list."}
+        metadata={"help": "Splits to use for training. This must not be an empty list."},
     )
     eval_splits: Optional[List[str]] = field(
         default_factory=lambda: ["val"],
         metadata={
             "help": "Splits to use for evaluation. "
-                    "If None, empty, or the splits are not found in the dataset, no evaluation is performed."
+            "If None, empty, or the splits are not found in the dataset, no evaluation is performed."
         },
     )
     prompt_dict_path: str = field(
@@ -75,21 +75,21 @@ class TrainingArguments(transformers.TrainingArguments):
         default=512,
         metadata={
             "help": "Maximum sequence length. Sequences will be right padded to this length (and possibly truncated)."
-                    "Enforcing a consistent max length ensures memory usage is constant and predictable."
+            "Enforcing a consistent max length ensures memory usage is constant and predictable."
         },
     )
     padding: Literal["max_length", "longest"] = field(
         default="longest",
         metadata={
             "help": "Padding strategy. If 'max_length', pads to `model_max_length` always; this might lead to some "
-                    "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
+            "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
         },
     )
     initialize_model_on_cpu: bool = field(
         default=False,
         metadata={
             "help": "Whether to initialize the model on CPU. "
-                    "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
+            "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
         },
     )
     resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
@@ -97,8 +97,8 @@ class TrainingArguments(transformers.TrainingArguments):
         default=False,
         metadata={
             "help": "Use fast tokenizer if True. "
-                    "Fast LLaMA tokenizer forces protobuf downgrade to 3.20.3. "
-                    "Use fast tokenizer only if you can live with that."
+            "Fast LLaMA tokenizer forces protobuf downgrade to 3.20.3. "
+            "Use fast tokenizer only if you can live with that."
         },
     )
 

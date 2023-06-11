@@ -90,7 +90,7 @@ def _openai_completion_helper(
     prompt_batch: Sequence[StrOrOpenAIObject],
     is_chat: bool,
     sleep_time: int,
-    openai_organization_ids : Optional[Sequence[str]]= None,
+    openai_organization_ids: Optional[Sequence[str]] = None,
     openai_api_key: Optional[str] = None,
     **shared_kwargs,
 ):
@@ -132,7 +132,9 @@ def _openai_completion_helper(
             else:
                 logging.warning("Hit request rate limit; retrying...")
                 if openai_organization_ids is not None and len(openai_organization_ids) > 1:
-                    openai.organization = random.choice([o for o in openai_organization_ids if o != openai.organization])
+                    openai.organization = random.choice(
+                        [o for o in openai_organization_ids if o != openai.organization]
+                    )
                     logging.warning(f"Switching to organization: {openai.organization} for OAI API key.")
                 time.sleep(sleep_time)  # Annoying rate limit on requests.
     return choices
@@ -209,10 +211,7 @@ def _openai_completion(
     shared_kwargs.update(decoding_kwargs)  # override default arguments if specified
     with multiprocessing.Pool(num_procs) as p:
         partial_completion_helper = functools.partial(
-            _openai_completion_helper,
-            sleep_time=sleep_time,
-            is_chat=is_chat,
-            **shared_kwargs
+            _openai_completion_helper, sleep_time=sleep_time, is_chat=is_chat, **shared_kwargs
         )
         completions = list(
             tqdm.tqdm(

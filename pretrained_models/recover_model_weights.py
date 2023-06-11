@@ -1,40 +1,44 @@
-import os
 import argparse
+import os
+
 import numpy as np
 import torch
 import transformers
 from huggingface_hub import HfApi, hf_hub_download
 
-from alpaca_farm.models.reward_model import RewardModel, RewardConfig
+from alpaca_farm.models.reward_model import RewardConfig, RewardModel
 from alpaca_farm.utils import stable_resize_token_embeddings_and_tokenizer
 
 
 def get_alpaca_farm_model_names():
     api = HfApi()
-    models = api.list_models(author='tatsu-lab', search='alpaca-farm')
+    models = api.list_models(author="tatsu-lab", search="alpaca-farm")
     model_names = [model.modelId for model in models]
-    model_names = [name.replace('tatsu-lab/alpaca-farm-', '').replace('-wdiff', '') for name in model_names]
+    model_names = [name.replace("tatsu-lab/alpaca-farm-", "").replace("-wdiff", "") for name in model_names]
     return model_names
 
 
 def build_argparse(model_names):
-    parser = argparse.ArgumentParser('Download AlpacaFarm models')
-    parser.add_argument('--llama-7b-hf-dir', type=str, required=True)
-    parser.add_argument('--alpaca-farm-model-name', choices=model_names + ['all'], default='all', required=True)
-    parser.add_argument('--models-save-dir', default='./pretrained_models', type=str)
-    parser.add_argument('--device', default='cpu', type=str)
-    parser.add_argument('--path-to-sft10k', type=str, help='Necessary for reconstructing reward models.')
+    parser = argparse.ArgumentParser("Download AlpacaFarm models")
+    parser.add_argument("--llama-7b-hf-dir", type=str, required=True)
+    parser.add_argument("--alpaca-farm-model-name", choices=model_names + ["all"], default="all", required=True)
+    parser.add_argument("--models-save-dir", default="./pretrained_models", type=str)
+    parser.add_argument("--device", default="cpu", type=str)
+    parser.add_argument("--path-to-sft10k", type=str, help="Necessary for reconstructing reward models.")
     args = parser.parse_args()
     if args.path_to_sft10k is None:
-        args.path_to_sft10k = os.path.join(args.models_save_dir, 'sft10k')
+        args.path_to_sft10k = os.path.join(args.models_save_dir, "sft10k")
     return args
 
 
 def load_weight_diff(hf_hub_name, is_reward_model=False, device="cpu", path_to_sft10k=None):
     if is_reward_model:
         model_tuned = RewardModel.from_pretrained(
-            hf_hub_name, device_map={"": torch.device(device)}, torch_dtype=torch.float32, flash_attn=False,
-            config=RewardConfig(backbone_model_name_or_path=path_to_sft10k)
+            hf_hub_name,
+            device_map={"": torch.device(device)},
+            torch_dtype=torch.float32,
+            flash_attn=False,
+            config=RewardConfig(backbone_model_name_or_path=path_to_sft10k),
         )
     else:
         model_tuned = transformers.AutoModelForCausalLM.from_pretrained(
@@ -82,12 +86,12 @@ if __name__ == "__main__":
     model_names = get_alpaca_farm_model_names()
     args = build_argparse(model_names)
 
-    model_names = model_names if args.alpaca_farm_model_name == 'all' else [args.alpaca_farm_model_name]
+    model_names = model_names if args.alpaca_farm_model_name == "all" else [args.alpaca_farm_model_name]
     for model_name in model_names:
-        print('Downloading', model_name)
+        print("Downloading", model_name)
 
         hf_hub_name = f"tatsu-lab/alpaca-farm-{model_name}-wdiff"
-        is_reward_model = 'reward-model' in model_name
+        is_reward_model = "reward-model" in model_name
         save_dir = os.path.join(args.models_save_dir, model_name)
 
         model_tuned, tokenizer_tuned = load_weight_diff(hf_hub_name, is_reward_model, args.device, args.path_to_sft10k)
@@ -99,4 +103,4 @@ if __name__ == "__main__":
         model_tuned.save_pretrained(save_dir)
         tokenizer_tuned.save_pretrained(save_dir)
 
-        print('Downloaded to', save_dir)
+        print("Downloaded to", save_dir)

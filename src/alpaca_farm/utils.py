@@ -131,9 +131,7 @@ def stable_resize_token_embeddings_and_tokenizer(
     stable_resize_token_embeddings(model, len(tokenizer))
 
 
-def stable_resize_token_embeddings(
-    model: transformers.PreTrainedModel, target_size: int
-):
+def stable_resize_token_embeddings(model: transformers.PreTrainedModel, target_size: int):
     num_new_tokens = target_size - model.get_input_embeddings().weight.size(0)
     model.resize_token_embeddings(target_size)
 
@@ -144,12 +142,8 @@ def stable_resize_token_embeddings(
         input_embeddings = model.get_input_embeddings().weight.data
         output_embeddings = model.get_output_embeddings().weight.data
 
-        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
-            dim=0, keepdim=True
-        )
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
-            dim=0, keepdim=True
-        )
+        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
 
         input_embeddings[-num_new_tokens:] = input_embeddings_avg
         output_embeddings[-num_new_tokens:] = output_embeddings_avg
@@ -195,3 +189,12 @@ class InfiniteLoader(object):
         except StopIteration:
             self.iterator = iter(self.loader)
             return next(self.iterator)
+
+
+def parallel_sort(*args: Sequence, key=None, reverse=False):
+    """Parallel sort of multiple lists."""
+    if key is None:
+        # Parallel sort based on the order of the first list.
+        key = lambda inputs: inputs[0]  # noqa
+    ret = sorted(zip_(*args), key=key, reverse=reverse)
+    return tuple([ret_i[j] for ret_i in ret] for j in range(len(args)))

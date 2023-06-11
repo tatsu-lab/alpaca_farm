@@ -16,7 +16,7 @@ import datasets
 import pandas as pd
 import transformers
 
-from . import utils, logging
+from . import logging, utils
 from .data_preprocessor import (
     BinaryRewardModelingDataset,
     DataCollatorForBinaryRewardModelingDataset,
