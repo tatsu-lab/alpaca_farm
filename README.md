@@ -50,7 +50,13 @@ learning algorithms for comparison and modification.
 
 ## Installation
 
-For basic installation, run
+To install the stable release, run
+
+```bash
+pip install alpaca-farm
+```
+
+To install from the latest commit on `main` branch, run
 
 ```bash
 pip install git+https://github.com/tatsu-lab/alpaca_farm.git
@@ -141,7 +147,8 @@ pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/
 
 </details>
 
-To get started, set the environment variable OPENAI_API_KEY to your OpenAI API key, and (optionally) OPENAI_ORG to the organization ID. You can do this by running
+To get started, set the environment variable OPENAI_API_KEY to your OpenAI API key, and (optionally) OPENAI_ORG to the
+organization ID. You can do this by running
 
 ```bash
 export OPENAI_API_KEY="sk..."
@@ -278,7 +285,10 @@ You can then use the generated samples at `<save_path>` directly with our automa
 
 ## Downloading pre-tuned AlpacaFarm models
 
-We provide model checkpoints for reward models and all our reference methods, listed in Table 2 of our [paper](https://arxiv.org/abs/2305.14387). Concretely, we tune each reference method in AlpacaFarm simulation and on human preference data and release both versions. The current list of models (available [here](https://huggingface.co/tatsu-lab)) includes:
+We provide model checkpoints for reward models and all our reference methods, listed in Table 2 of
+our [paper](https://arxiv.org/abs/2305.14387). Concretely, we tune each reference method in AlpacaFarm simulation and on
+human preference data and release both versions. The current list of models (
+available [here](https://huggingface.co/tatsu-lab)) includes:
 
 - `sft10k`, the supervised learning base model that we collect preference data with.
 - `reward-model-sim`, the reward model trained on AlpacaFarm preference data.
@@ -291,7 +301,8 @@ We provide model checkpoints for reward models and all our reference methods, li
 - `feedme-human`, the FeedME method trained on human preferences.
 - `reward-condition-sim`, the reward conditioning method trained on simulated preferences.
 
-To download these checkpoints, first make sure to have a LLaMA-7B checkpoint [converted into the huggingface format](https://huggingface.co/docs/transformers/main/model_doc/llama).
+To download these checkpoints, first make sure to have a LLaMA-7B
+checkpoint [converted into the huggingface format](https://huggingface.co/docs/transformers/main/model_doc/llama).
 Then, run the following to download all AlpacaFarm models:
 
 ```
@@ -309,7 +320,8 @@ python -m pretrained_models.recover_model_weights \
   --models-save-dir <dir_to_save_all_models>
 ```
 
-To download either of the reward models individually, you'll need to have `sft10k` downloaded first to `<dir_to_save_all_models>`.
+To download either of the reward models individually, you'll need to have `sft10k` downloaded first
+to `<dir_to_save_all_models>`.
 
 ## Coming soon
 
