@@ -278,7 +278,8 @@ def get_pretrained_model_name_with_model_name_or_path(model_name_or_path: AnyPat
 
     Examples:
     >>> get_pretrained_model_name_with_model_name_or_path(
-        "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_opt_6b_clean_v0_3ep")
+    ...     "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_opt_6b_clean_v0_3ep"
+    ... )
     "facebook/opt-6.7b"  # Fine-tuned model started from this model.
 
     >>> get_pretrained_model_name_with_model_name_or_path("facebook/opt-125m")
