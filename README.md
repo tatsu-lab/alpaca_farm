@@ -354,6 +354,7 @@ to `<dir_to_save_all_models>`.
 ## Coming soon
 
 - [ ] Quark implementation
+- [ ] Direct Preference Optimization
 
 ## Citation
 
