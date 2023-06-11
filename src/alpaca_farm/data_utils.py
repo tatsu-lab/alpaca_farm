@@ -16,7 +16,7 @@ import datasets
 import pandas as pd
 import transformers
 
-from . import utils
+from . import utils, logging
 from .data_preprocessor import (
     BinaryRewardModelingDataset,
     DataCollatorForBinaryRewardModelingDataset,
@@ -27,6 +27,8 @@ from .data_preprocessor import (
     split_train_into_train_and_eval,
 )
 
+logger = logging.get_logger(__name__)
+
 
 def make_supervised_data_module(
     tokenizer: transformers.PreTrainedTokenizer,
@@ -36,19 +38,30 @@ def make_supervised_data_module(
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
     alpaca_instructions = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
-    train_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.train_splits])
-    eval_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.eval_splits])
 
+    train_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.train_splits])
     train_dataset = SFTDataset(
         df=train_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
     )
-    eval_dataset = SFTDataset(
-        df=eval_df,
-        prompt_dict=prompt_dict,
-        tokenizer=tokenizer,
-    )
+
+    eval_dataset = None
+    if data_args.eval_splits is not None:
+        found_splits = [
+            pd.DataFrame(alpaca_instructions[split]) for split in data_args.eval_splits if split in alpaca_instructions
+        ]
+        if len(found_splits) > 0:
+            eval_df = pd.concat(found_splits)
+            eval_dataset = SFTDataset(
+                df=eval_df,
+                prompt_dict=prompt_dict,
+                tokenizer=tokenizer,
+            )
+
+    if eval_dataset is None:
+        logger.warning("Didn't find evaluation dataset. Disabling evaluation.")
+        training_args.do_eval = False
 
     data_collator = DataCollatorForSFTDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)

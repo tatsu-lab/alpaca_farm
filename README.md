@@ -271,6 +271,34 @@ python examples/best_of_n.py \
 
 You can then use the generated samples at `<your_output_path_to_store_samples>` directly with our automated evaluation.
 
+### Expert Iteration
+
+To replicate our expert iteration results for the AlpacaFarm evaluation suite, first produce best-of-n samples. Run
+
+```bash
+python examples/best_of_n.py \
+  --task "run_best_of_n" \
+  --decoder_name_or_path <your_output_dir_for_decoder> \  # SFT10k model.
+  --scorer_name_or_path <your_output_dir_for_reward_model> \
+  --num_return_sequences 16 \  # This is the n in best-of-n.
+  --per_device_batch_size 4 \  # Reduce this if you don't have enough memory.
+  --split "unlabeled" \
+  --mixed_precision "bf16" \
+  --tf32 True \
+  --flash_attn True \
+  --output_path '<your_output_dir_for_expiter_data>/best_of_n_samples.json'
+```
+
+Then perform supervised fine-tuning from the SFT10k checkpoint with the best-of-n samples
+
+```bash
+bash examples/scripts/expiter.sh \
+  <your_output_dir_for_expiter> \
+  <your_wandb_run_name> \
+  <your_output_dir_for_sft10k> \
+  <your_output_dir_for_expiter_data>
+```
+
 ### OpenAI models
 
 To run the OpenAI reference models with our prompts and decoding hyperparameters, run
@@ -326,7 +354,7 @@ to `<dir_to_save_all_models>`.
 ## Coming soon
 
 - [ ] Quark implementation
-- [ ] Expert iteration implementation
+- [ ] Direct Preference Optimization
 
 ## Citation
 
