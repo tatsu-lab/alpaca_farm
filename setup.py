@@ -16,7 +16,6 @@ setuptools.setup(
     version=version,
     package_dir={"": "src"},
     packages=setuptools.find_packages("src"),
-    package_data={"": ["alpaca_farm/auto_annotations/annotators/*/*.yaml"]},
     include_package_data=True,
     install_requires=[
         "datasets",
