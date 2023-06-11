@@ -14,7 +14,7 @@ __all__ = ["alpaca_leaderboard"]
 
 PRECOMPUTED_LEADERBOARD = {
     "annotators/annotator_pool_v0/configs.yaml": {
-        "rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20": {
+        "RLHF PPO (rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20)": {
             "n_draws": 9.0,
             "n_total": 803.0,
             "n_wins": 370.0,
@@ -22,13 +22,21 @@ PRECOMPUTED_LEADERBOARD = {
             "standard_error": 1.751619984513092,
             "win_rate": 46.63760896637609,
         },
-        "sft_llama_7b_regen_v7_3ep": {
+        "SFT 52k (Alpaca 7B; sft_v6_52k_llama_7b_regen_v7_3ep_recover)": {
             "n_draws": 16.0,
             "n_total": 804.0,
             "n_wins": 320.0,
             "n_wins_base": 468.0,
             "standard_error": 1.7163543811890173,
             "win_rate": 40.79601990049751,
+        },
+        "SFT 10k (sft_v6_llama_7b_regen_v7_3ep)": {
+            "n_draws": 19.0,
+            "n_total": 802.0,
+            "n_wins": 278.00,
+            "n_wins_base": 505.00,
+            "standard_error": 1.67,
+            "win_rate": 35.85,
         },
         "Davinci001": {
             "n_draws": 0.0,
