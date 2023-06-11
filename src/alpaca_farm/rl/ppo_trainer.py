@@ -30,6 +30,7 @@ from ..models import reward_model as reward_model_module
 from ..models import rl_models
 from ..types import AnyPath, AnyPathOrNone, LRScheduler, Tensor
 from . import rl_trainer
+from torch import nn
 
 logger = logging.get_logger(__name__)
 
@@ -43,7 +44,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
         data_collator: Callable,
         policy: rl_models.ActorCritic,
         ref_policy: rl_models.Policy,
-        reward_model,
+        reward_model: nn.Module,
         tokenizer: transformers.PreTrainedTokenizer,
         accelerator: accelerate_patch.MyAccelerator,
         optimizer: Optional[torch.optim.Optimizer] = None,
@@ -336,7 +337,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
             prefix = "policy.base_model."
             for key, value in state_dict.items():
                 if key.startswith(prefix):
-                    new_state_dict[key[len(prefix) :]] = value
+                    new_state_dict[key[len(prefix):]] = value
             state_dict = new_state_dict
 
             if check_corrupted:  # Let the checks run on GPU.
@@ -454,7 +455,7 @@ def make_models(
     reward_model.requires_grad_(False)
     reward_model = accelerator.prepare(reward_model)
 
-    # TODO: This is a hack to get FSDP running. Remove in the future when we figure things out.
+    # TODO: This is a hack to get FSDP running. Remove in the future when this is fixed.
     if accelerator.distributed_type == accelerate.DistributedType.FSDP:
         inputs = tokenizer("fsdp are you happy now??? :)" * 50, return_tensors="pt")
         inputs = {key: value.to(accelerator.device) for key, value in inputs.items()}

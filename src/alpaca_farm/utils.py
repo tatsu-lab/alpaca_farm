@@ -195,3 +195,12 @@ class InfiniteLoader(object):
         except StopIteration:
             self.iterator = iter(self.loader)
             return next(self.iterator)
+
+
+def parallel_sort(*args: Sequence, key=None, reverse=False):
+    """Parallel sort of multiple lists."""
+    if key is None:
+        # Parallel sort based on the order of the first list.
+        key = lambda inputs: inputs[0]  # noqa
+    ret = sorted(zip_(*args), key=key, reverse=reverse)
+    return tuple([ret_i[j] for ret_i in ret] for j in range(len(args)))
