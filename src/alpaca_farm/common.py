@@ -321,7 +321,8 @@ def get_model_name_with_model_name_or_path(model_name_or_path: AnyPath) -> str:
 
     Examples:
     >>> get_model_name_with_model_name_or_path(
-        "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_opt_6b_clean_v0_3ep")
+    ...     "/juice5/scr5/nlp/crfm/human-feedback/models/selfinstruct/sft_opt_6b_clean_v0_3ep"
+    ... )
     "sft_opt_6b_clean_v0_3ep"
 
     >>> get_model_name_with_model_name_or_path("facebook/opt-125m")
