@@ -131,9 +131,7 @@ def stable_resize_token_embeddings_and_tokenizer(
     stable_resize_token_embeddings(model, len(tokenizer))
 
 
-def stable_resize_token_embeddings(
-    model: transformers.PreTrainedModel, target_size: int
-):
+def stable_resize_token_embeddings(model: transformers.PreTrainedModel, target_size: int):
     num_new_tokens = target_size - model.get_input_embeddings().weight.size(0)
     model.resize_token_embeddings(target_size)
 
@@ -144,12 +142,8 @@ def stable_resize_token_embeddings(
         input_embeddings = model.get_input_embeddings().weight.data
         output_embeddings = model.get_output_embeddings().weight.data
 
-        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
-            dim=0, keepdim=True
-        )
-        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
-            dim=0, keepdim=True
-        )
+        input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+        output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
 
         input_embeddings[-num_new_tokens:] = input_embeddings_avg
         output_embeddings[-num_new_tokens:] = output_embeddings_avg

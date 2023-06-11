@@ -15,9 +15,9 @@
 import copy
 import itertools
 import logging
-import random
 import os
 import pathlib
+import random
 import re
 from collections import Counter
 from pathlib import Path
@@ -273,7 +273,8 @@ def convert_ordinal_to_binary_preference(
 
     return preferences
 
-def convert_to_dataframe(data : AnyData) -> pd.DataFrame:
+
+def convert_to_dataframe(data: AnyData) -> pd.DataFrame:
     """Convert input that AlpacaFarm accepts into a dataframe."""
     if isinstance(data, pd.DataFrame):
         return data

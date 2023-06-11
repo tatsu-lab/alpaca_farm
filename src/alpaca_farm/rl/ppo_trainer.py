@@ -20,6 +20,7 @@ import pandas as pd
 import torch
 import tqdm
 import transformers
+from torch import nn
 from torch.distributed.fsdp.fully_sharded_data_parallel import FullStateDictConfig
 from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
@@ -30,7 +31,6 @@ from ..models import reward_model as reward_model_module
 from ..models import rl_models
 from ..types import AnyPath, AnyPathOrNone, LRScheduler, Tensor
 from . import rl_trainer
-from torch import nn
 
 logger = logging.get_logger(__name__)
 
@@ -337,7 +337,7 @@ class PPOTrainer(rl_trainer.RLTrainer):
             prefix = "policy.base_model."
             for key, value in state_dict.items():
                 if key.startswith(prefix):
-                    new_state_dict[key[len(prefix):]] = value
+                    new_state_dict[key[len(prefix) :]] = value
             state_dict = new_state_dict
 
             if check_corrupted:  # Let the checks run on GPU.

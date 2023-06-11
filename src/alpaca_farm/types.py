@@ -16,9 +16,9 @@ import os
 import pathlib
 from typing import Any, List, Optional, Sequence, Union
 
+import datasets
 import pandas as pd
 import torch
-import datasets
 from torch import Tensor
 
 AnyPath = Union[str, os.PathLike, pathlib.Path]
