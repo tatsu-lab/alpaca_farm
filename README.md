@@ -315,7 +315,6 @@ To download either of the reward models individually, you'll need to have `sft10
 
 - [ ] Quark implementation
 - [ ] Expert iteration implementation
-- [ ] Human evaluation of generated samples from leaderboard models
 
 ## Citation
 
