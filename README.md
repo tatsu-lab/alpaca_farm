@@ -292,7 +292,7 @@ python examples/best_of_n.py \
 Then perform supervised fine-tuning from the SFT10k checkpoint with the best-of-n samples
 
 ```bash
-bash examples/scripts/sft.sh \
+bash examples/scripts/expiter.sh \
   <your_output_dir_for_expiter> \
   <your_wandb_run_name> \
   <your_output_dir_for_sft10k> \
