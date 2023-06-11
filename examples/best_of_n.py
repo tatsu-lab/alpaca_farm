@@ -129,7 +129,7 @@ def run_rerank(
     Returns:
         Rerank results as a list of dict data.
     """
-    if isinstance(list_dict_data_or_path, AnyPath):
+    if isinstance(list_dict_data_or_path, (str, pathlib.Path)):
         list_dict_data_or_path = utils.jload(list_dict_data_or_path)
 
     sequences = [
