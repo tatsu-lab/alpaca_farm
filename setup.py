@@ -16,6 +16,7 @@ setuptools.setup(
     version=version,
     package_dir={"": "src"},
     packages=setuptools.find_packages("src"),
+    include_package_data=True,
     install_requires=[
         "datasets",
         "einops",
