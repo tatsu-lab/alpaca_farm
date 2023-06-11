@@ -354,7 +354,6 @@ to `<dir_to_save_all_models>`.
 ## Coming soon
 
 - [ ] Quark implementation
-- [ ] Expert iteration implementation
 
 ## Citation
 
