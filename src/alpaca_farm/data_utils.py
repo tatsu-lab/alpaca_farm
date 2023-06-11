@@ -73,7 +73,7 @@ def make_binary_reward_modeling_data_module(
     train_dataset, eval_dataset = split_train_into_train_and_eval(
         train_dataset=train_dataset,
         eval_size=data_args.eval_size,
-        seed=training_args.seed,
+        seed=42,
     )
     data_collator = DataCollatorForBinaryRewardModelingDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)
