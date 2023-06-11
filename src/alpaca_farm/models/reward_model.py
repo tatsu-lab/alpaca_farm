@@ -27,7 +27,7 @@ class RewardConfig(transformers.PretrainedConfig):
     def __init__(self, backbone_model_name_or_path=None, **kwargs):
         super(RewardConfig, self).__init__(**kwargs)
         self.backbone_model_name_or_path = backbone_model_name_or_path
-        self._name_or_path = common.get_pretrained_model_name_with_model_name_or_path(backbone_model_name_or_path)
+        self._name_or_path = backbone_model_name_or_path
 
 
 class RewardModelOutput(ModelOutput):
