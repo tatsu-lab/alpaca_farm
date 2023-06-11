@@ -50,16 +50,17 @@ def load_model_and_tokenizer_for_inference(
     This function should only be used for decoding or reward scoring.
 
     Notes:
-        - This function is only guaranteed to work correctly when loading admissible model families, i.e., opt and llama.
-        - Loaded models are always in eval mode.
+        - This function is only guaranteed to work correctly when loading admissible model families,
+            i.e., opt and llama.
+        - Loaded models are in eval mode.
         - By default, this function internally shrinks the model embedding size to avoid generating out of vocab tokens.
             Models like OPT are by default created with embedding size that's divisible by 64, even though the vocab
             size is not. This is to help with training speed, but can be problematic when generating, i.e., there is
             a low probability of generating out of vocab ids (especially for untrained models).
         - By default, loaded models are on the device specified by LOCAL_RANK or cpu.
-            - This behavior can be overridden by passing device_map to model_kwargs.
-        - By default, loaded tokenizers are fast tokenizers in left padding mode.
-            - This behavior can be overridden by passing use_fast and padding_side to tokenizer_kwargs.
+            - This behavior can be overridden by passing `device_map` to model_kwargs.
+        - By default, loaded tokenizers are slow tokenizers in left padding mode.
+            - This behavior can be overridden by passing `use_fast` and `padding_side` to tokenizer_kwargs.
     """
     logger.warning(f"Loading model for inference: {model_name_or_path}")
 
@@ -72,7 +73,7 @@ def load_model_and_tokenizer_for_inference(
         default_model_kwargs.update(model_kwargs)  # Make possible overriding default_model_kwargs.
         model_kwargs = default_model_kwargs
 
-    default_tokenizer_kwargs = dict(padding_side="left", use_fast=True, cache_dir=cache_dir)
+    default_tokenizer_kwargs = dict(padding_side="left", use_fast=False, cache_dir=cache_dir)
     if tokenizer_kwargs is None:
         tokenizer_kwargs = default_tokenizer_kwargs
     else:
