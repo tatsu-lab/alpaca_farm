@@ -47,3 +47,7 @@ def main():
         tokenizer=tokenizer,
     )
     trainer.train()
+
+
+if __name__ == "__main__":
+    main()
