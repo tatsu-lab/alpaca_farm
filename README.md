@@ -343,8 +343,8 @@ human preference data and release both versions. The current list of models
 - `reward-condition-sim`, the reward conditioning method trained on simulated preferences.
 
 To download and recover these checkpoints, first make sure to have a LLaMA-7B
-checkpoint [converted into the Hugging Face format](https://huggingface.co/docs/transformers/main/model_doc/llama) **
-with transformers>=4.29.2**.
+checkpoint [converted into the Hugging Face format](https://huggingface.co/docs/transformers/main/model_doc/llama)
+**with transformers>=4.29.2**.
 Then, run the following to download all AlpacaFarm models:
 
 ```
