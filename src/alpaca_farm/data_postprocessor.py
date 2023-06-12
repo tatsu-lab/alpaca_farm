@@ -40,3 +40,11 @@ class SequentialPostProcessor(object):
         for operation in self.operations:
             df = operation(df)
         return df
+
+
+@dataclass
+class RewardConditioningPromptPostprocessor(object):
+    injected_token = "<reward_0>"
+
+    def __call__(self, prompt: str, **kwargs):
+        return f"{self.injected_token}{prompt}"

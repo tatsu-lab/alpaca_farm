@@ -425,6 +425,7 @@ class QueryDataset(Dataset):
         tokenizer: transformers.PreTrainedTokenizer,
         query_len: int,
         df_postprocessor: Optional[Callable] = None,
+        prompt_postprocessor: Optional[Callable] = None,
     ):
         super(QueryDataset, self).__init__()
 
@@ -432,10 +433,11 @@ class QueryDataset(Dataset):
             df = df_postprocessor(df)
         list_dict_data = df.to_dict(orient="records")
 
-        # prompts are strings; queries are tensors.
         prompts = [format_prompt(example=dict_data, prompt_dict=prompt_dict) for dict_data in list_dict_data]
-        queries = [tokenizer(prompt, return_tensors="pt", truncation=False).input_ids[0] for prompt in prompts]
+        if prompt_postprocessor is not None:
+            prompts = [prompt_postprocessor(prompt) for prompt in prompts]
 
+        queries = [tokenizer(prompt, return_tensors="pt", truncation=False).input_ids[0] for prompt in prompts]
         filtered_queries = [query for query in queries if len(query) <= query_len]
         logger.warning(
             f"Filtered out {len(queries) - len(filtered_queries)} instances out of {len(queries)} that "

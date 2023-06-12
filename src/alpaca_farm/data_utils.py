@@ -17,6 +17,7 @@ import pandas as pd
 import transformers
 
 from . import logging, utils
+from .data_postprocessor import RewardConditioningPromptPostprocessor
 from .data_preprocessor import (
     BinaryRewardModelingDataset,
     DataCollatorForBinaryRewardModelingDataset,
@@ -103,16 +104,25 @@ def make_rl_data_module(
     train_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.train_splits])
     eval_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.eval_splits])
 
+    if getattr(training_args, "num_reward_tokens", 0) > 0 and not getattr(
+        training_args, "train_on_best_quantile", True
+    ):
+        prompt_postprocessor = RewardConditioningPromptPostprocessor()
+    else:
+        prompt_postprocessor = None
+
     train_dataset = QueryDataset(
         df=train_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
         query_len=training_args.query_len,
+        prompt_postprocessor=prompt_postprocessor,
     )
     eval_dataset = QueryDataset(
         df=eval_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
         query_len=training_args.query_len,
+        prompt_postprocessor=prompt_postprocessor,
     )
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=DataCollatorForStackableDataset())
