@@ -514,7 +514,7 @@ class QueryResponseDataset(Dataset):
         self.query_attn_masks = queries.ne(tokenizer.pad_token_id).long()
 
     def __getitem__(self, i):
-        return dict(queries=self.queries[i], query_attn_masks=self.query_attn_masks[i])
+        return dict(queries=self.queries[i], responses=self.responses[i], query_attn_masks=self.query_attn_masks[i])
 
     def __len__(self):
         return len(self.queries)
