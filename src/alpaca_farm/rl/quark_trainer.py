@@ -113,7 +113,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
         )
-        self.data_pool = DataPool(self.args.policy_tokenizer)
+        self.data_pool = DataPool(self.tokenizer)
         self.entropy_ctl = kl_controller.FixedKLController(kl_coef=args.entropy_coef)
         self.sft_dataloader = None  # Must be instantiated in `rollout`.
 
@@ -189,7 +189,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
         queries_no_quark, query_attn_masks_no_quark = ignore_tokens(
             input_ids=queries,
             attention_mask=query_attn_masks,
-            tokens_to_ignore=self.args.policy_tokenizer.additional_special_tokens_ids,
+            tokens_to_ignore=self.tokenizer.additional_special_tokens_ids,
         )
 
         policy_outputs = self.policy(queries, query_attn_masks, responses, temperature=self.args.temperature)
@@ -201,7 +201,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
         logits, logprobs = common.unpack_dict(policy_outputs, keys=("logits", "logprobs"))
         (ref_logits,) = common.unpack_dict(ref_policy_outputs, keys=("logits",))
 
-        original_vocab_size = len(self.args.policy_tokenizer) - self.args.num_reward_tokens
+        original_vocab_size = len(self.tokenizer) - self.args.num_reward_tokens
         logits, ref_logits = tuple(t[..., :original_vocab_size] for t in (logits, ref_logits))
 
         kl_per_token = F.kl_div(F.log_softmax(ref_logits, dim=-1), F.softmax(logits, dim=-1), reduction="none").sum(
@@ -212,7 +212,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
         # https://github.com/GXimingLu/Quark/blob/a4baf754de15f4d9675dd394571a7dd35fc0abd9/main.py#L252
         assert responses.size() == logprobs.size() == kl_per_token.size() == entropies.size()
 
-        masks = responses == self.args.policy_tokenizer.pad_token_id
+        masks = responses == self.tokenizer.pad_token_id
         kl_per_token.masked_fill_(masks, 0.0)
         entropies.masked_fill_(masks, 0.0)
 
@@ -271,7 +271,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
                 queries, query_attn_masks = ignore_tokens(
                     input_ids=queries,
                     attention_mask=query_attn_masks,
-                    tokens_to_ignore=self.args.policy_tokenizer.additional_special_tokens_ids,
+                    tokens_to_ignore=self.tokenizer.additional_special_tokens_ids,
                 )
 
             respond_outputs = unwrapped_policy.respond(queries, query_attn_masks, temperature=self.args.temperature)
@@ -279,9 +279,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
 
             # Strings below should not contain reward tokens.
             text_queries, text_responses = tuple(
-                self.args.policy_tokenizer.batch_decode(
-                    tensor, skip_special_tokens=True, clean_up_tokenization_spaces=True
-                )
+                self.tokenizer.batch_decode(tensor, skip_special_tokens=True, clean_up_tokenization_spaces=True)
                 for tensor in (queries, responses)
             )
             del queries, responses  # Prevent mistakes.
@@ -310,7 +308,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
         text_queries, text_responses, _ = self.data_pool.sort_and_get(best_token_only=self.args.best_token_only)
         # TODO: fix this.
         rollouts_dataset = data_utils.QueryResponseDataset(
-            tokenizer=self.args.policy_tokenizer,
+            tokenizer=self.tokenizer,
             queries=text_queries,
             responses=text_responses,
             query_len=self.args.query_len,
@@ -342,7 +340,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
         output_dir = self.args.output_dir if output_dir is None else output_dir
         utils.makedirs(output_dir)
 
-        model, tokenizer = self.policy, self.args.policy_tokenizer
+        model, tokenizer = self.policy, self.tokenizer
         with FSDP.state_dict_type(
             model, StateDictType.FULL_STATE_DICT, FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
         ):
@@ -456,7 +454,7 @@ def make_models(
 
     # TODO: This is a hack to get FSDP running. Remove in the future when this is fixed.
     if accelerator.distributed_type == accelerate.DistributedType.FSDP:
-        inputs = args.policy_tokenizer("fsdp are you happy now??? :)" * 50, return_tensors="pt")
+        inputs = tokenizer("fsdp are you happy now??? :)" * 50, return_tensors="pt")
         inputs = {key: value.to(accelerator.device) for key, value in inputs.items()}
         policy(inputs["input_ids"], inputs["attention_mask"], inputs["input_ids"])
 
