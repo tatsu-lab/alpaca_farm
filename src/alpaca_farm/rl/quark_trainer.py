@@ -61,7 +61,7 @@ class DataPool(object):
     def clear(self):
         (self.queries, self.responses, self.rewards) = [], [], []
 
-    def sort_and_get(self, best_token_only=True, num_reward_token_reps=1):
+    def sort_and_get(self, best_token_only=True):
         queries, responses, rewards = utils.parallel_sort(
             self.queries,
             self.responses,
@@ -80,9 +80,7 @@ class DataPool(object):
         else:
             injected_tokens = []
             for chunk_index, chunk_size in enumerate(chunk_sizes):
-                injected_tokens.extend(
-                    [self.additional_special_tokens[chunk_index] * num_reward_token_reps] * chunk_size
-                )
+                injected_tokens.extend([self.additional_special_tokens[chunk_index]] * chunk_size)
             queries = [f"{injected_token}{query}" for injected_token, query in utils.zip_(injected_tokens, queries)]
         return queries, responses, rewards
 
@@ -309,9 +307,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             utils.jdump(rollouts_to_disk, utils.join(self.args.output_dir, "rollouts", f"step_{step_idx}.json"))
             self.accelerator.log({"train/reward": utils.mean(rewards_all)}, step=step_idx)
 
-        text_queries, text_responses, _ = self.data_pool.sort_and_get(
-            best_token_only=self.args.best_token_only, num_reward_token_reps=self.args.num_reward_token_reps
-        )
+        text_queries, text_responses, _ = self.data_pool.sort_and_get(best_token_only=self.args.best_token_only)
         # TODO: fix this.
         rollouts_dataset = data_utils.QueryResponseDataset(
             tokenizer=self.args.policy_tokenizer,

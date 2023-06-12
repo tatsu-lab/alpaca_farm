@@ -101,10 +101,9 @@ class TrainingArguments(transformers.TrainingArguments):
     )
     # Quark specific arguments.
     num_reward_tokens: int = field(default=0)
-    num_reward_token_reps: int = field(default=1)
     entropy_coef: float = field(default=0.0)
     clear_data_pool_on_each_rollout: bool = field(
-        default=False,
+        default=True,
         metadata={"help": "Whether to clear the data pool on each rollout."},
     )
     best_token_only: bool = field(
