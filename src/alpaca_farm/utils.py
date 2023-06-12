@@ -28,7 +28,6 @@ from typing import Callable, Optional, Sequence, Union
 import numpy as np
 import torch
 import transformers
-from torch import nn
 from torch.utils.data import DataLoader
 
 from . import logging
@@ -133,24 +132,25 @@ def stable_resize_token_embeddings_and_tokenizer(
 
 
 def stable_resize_token_embeddings(model: transformers.PreTrainedModel, target_size: int, jitter_new_embeddings=False):
-    input_embeddings = model.get_input_embeddings()
-    num_new_tokens = target_size - input_embeddings.weight.size(0)
+    num_new_tokens = target_size - model.get_input_embeddings().weight.size(0)
     model.resize_token_embeddings(target_size)
 
     if num_new_tokens > 0:
 
+        @torch.inference_mode()
         def stable_init(embedding):
             embedding_data = embedding.weight.data
             embedding_avg = embedding_data[:-num_new_tokens].mean(dim=0, keepdim=True)
             embedding_data[-num_new_tokens:] = embedding_avg
             if jitter_new_embeddings:
                 embedding_std = embedding_data[:-num_new_tokens].std(dim=0, keepdim=True)
+                # The random tensor must be of the same shape as the new embeddings.
                 embedding_data[-num_new_tokens:] += torch.randn_like(embedding_data[-num_new_tokens:]) * embedding_std
 
+        input_embeddings = model.get_input_embeddings()  # Must grab this again after resize.
         output_embeddings = model.get_output_embeddings()
-        tied_weights = id(input_embeddings.weight) == id(output_embeddings.weight)
-        embeddings_to_init = (input_embeddings,) if tied_weights else (input_embeddings, output_embeddings)
-        for embeddings in embeddings_to_init:
+        # It doesn't matter if there's weight sharing or not; with sharing, the second init will overwrite the first.
+        for embeddings in (input_embeddings, output_embeddings):
             stable_init(embeddings)
 
 
