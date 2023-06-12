@@ -299,7 +299,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             del queries, responses  # Prevent mistakes.
 
             text_sequences = [q + r for q, r in utils.zip_(text_queries, text_responses)]
-            sequences = self.args.reward_tokenizer(text_sequences, return_tensors="pt", padding=True, truncation=True)
+            sequences = self.tokenizer(text_sequences, return_tensors="pt", padding=True, truncation=True)
             rewards = self.reward_model(**sequences).rewards
 
             # Nothing in here should contain the reward token!
