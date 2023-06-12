@@ -99,20 +99,22 @@ class TrainingArguments(transformers.TrainingArguments):
             "Use fast tokenizer only if you can live with that."
         },
     )
-    # Quark specific arguments.
-    num_reward_tokens: int = field(default=0)
-    entropy_coef: float = field(default=0.0)
+    num_reward_tokens: int = field(default=4, metadata={"help": "Number of extra reward conditioning tokens in Quark."})
+    entropy_coef: float = field(
+        default=0.0,
+        metadata={"help": "Entropy regularization coefficient for Quark."},
+    )
     clear_data_pool_on_each_rollout: bool = field(
         default=True,
-        metadata={"help": "Whether to clear the data pool on each rollout."},
+        metadata={"help": "If True, clear the data pool before each rollout period for Quark."},
     )
-    best_token_only: bool = field(
+    train_on_best_quantile: bool = field(
         default=True,
-        metadata={"help": "Whether to train on rollouts that correspond to the best token only."},
+        metadata={"help": "If True, train only on the examples with best rewards for Quark."},
     )
     num_gradient_steps_per_step: int = field(
         default=1,
-        metadata={"help": "Number of gradient steps to take per Quark step."},
+        metadata={"help": "Number of gradient steps to take per step for Quark."},
     )
 
     def __post_init__(self):
@@ -169,6 +171,8 @@ class TrainingArguments(transformers.TrainingArguments):
             self.save_steps_extra_list = [int(string) for string in self.save_steps_extra.split("__")]
         else:
             self.save_steps_extra_list = []
+
+        assert self.num_reward_tokens > 1, "Quark requires at least 2 reward tokens."
 
     def set_truncate_token_ids(self, tokenizer: transformers.PreTrainedTokenizer):
         """Convert truncation token to token ids.

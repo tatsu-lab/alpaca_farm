@@ -413,12 +413,10 @@ def make_tokenizer(args):
     if policy_tokenizer.get_vocab() != reward_tokenizer.get_vocab():
         raise ValueError("AlpacaFarm does not support different tokenizer for policy and reward models.")
 
-    # TODO: Don't forget the post-processor.
-    if not args.best_token_only and args.num_reward_tokens > 0:  # Insert reward tokens for all-quantiles Quark.
-        logger.warning(f"Adding {args.num_reward_tokens} reward tokens.")
-        policy_tokenizer.add_special_tokens(
-            {"additional_special_tokens": [f"<reward_{i}>" for i in range(args.num_reward_tokens)]}  # noqa
-        )
+    logger.warning(f"Adding {args.num_reward_tokens} reward conditioning tokens for Quark.")
+    policy_tokenizer.add_special_tokens(
+        {"additional_special_tokens": [f"<reward_{i}>" for i in range(args.num_reward_tokens)]}  # noqa
+    )
     return policy_tokenizer
 
 

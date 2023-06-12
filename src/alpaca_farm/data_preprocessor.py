@@ -459,15 +459,28 @@ class QueryDataset(Dataset):
         self.list_dict_data = list_dict_data
 
     def __getitem__(self, i):
-        return_dict = dict(queries=self.queries[i], query_attn_masks=self.query_attn_masks[i])
-        return return_dict
+        return dict(queries=self.queries[i], query_attn_masks=self.query_attn_masks[i])
 
     def __len__(self):
         return len(self.queries)
 
 
 class QueryResponseDataset(Dataset):
-    pass
+    def __init__(
+        self,
+        tokenizer: transformers.PreTrainedTokenizer,
+        queries: Sequence[str],
+        responses: Sequence[str],
+        query_len: int,
+        response_len: int,
+    ):
+        super(QueryResponseDataset, self).__init__()
+
+    def __getitem__(self, i):
+        return dict(queries=self.queries[i], query_attn_masks=self.query_attn_masks[i])
+
+    def __len__(self):
+        return len(self.queries)
 
 
 @dataclasses.dataclass
