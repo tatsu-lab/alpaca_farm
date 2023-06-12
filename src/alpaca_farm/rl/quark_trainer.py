@@ -75,7 +75,7 @@ class DataPool(object):
     def clear(self):
         (self.queries, self.responses, self.rewards) = [], [], []
 
-    def sort_and_get(self, best_token_only=True):
+    def sort_and_get(self, train_on_best_quantile=True):
         queries, responses, rewards = utils.parallel_sort(
             self.queries,
             self.responses,
@@ -89,7 +89,7 @@ class DataPool(object):
         chunk_sizes[-1] = chunk_sizes[-1] + size % len(self.additional_special_tokens)
         assert sum(chunk_sizes) == size, "Internal error: Sum of chunk sizes doesn't match up with total size."
 
-        if best_token_only:  # Don't inject any tokens here.
+        if train_on_best_quantile:  # Don't inject any tokens here.
             queries, responses, rewards = tuple(l[: chunk_sizes[0]] for l in (queries, responses, rewards))
         else:
             injected_tokens = []
@@ -315,7 +315,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             utils.jdump(rollouts_to_disk, utils.join(self.args.output_dir, "rollouts", f"step_{step_idx}.json"))
             self.accelerator.log({"train/reward": utils.mean(rewards_all)}, step=step_idx)
 
-        text_queries, text_responses, _ = self.data_pool.sort_and_get(best_token_only=self.args.best_token_only)
+        text_queries, text_responses, _ = self.data_pool.sort_and_get(self.args.train_on_best_quantile)
         rollouts_dataset = data_preprocessor.QueryResponseDataset(
             tokenizer=self.tokenizer,
             queries=text_queries,
