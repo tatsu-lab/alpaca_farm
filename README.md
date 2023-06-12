@@ -315,8 +315,8 @@ You can then use the generated samples at `<save_path>` directly with our automa
 
 We provide model checkpoints for reward models and all our reference methods, listed in Table 2 of
 our [paper](https://arxiv.org/abs/2305.14387). Concretely, we tune each reference method in AlpacaFarm simulation and on
-human preference data and release both versions. The current list of models (
-available [here](https://huggingface.co/tatsu-lab)) includes:
+human preference data and release both versions. The current list of models 
+(available [here](https://huggingface.co/tatsu-lab)) includes:
 
 - `sft10k`, the supervised learning base model that we collect preference data with.
 - `reward-model-sim`, the reward model trained on AlpacaFarm preference data.
@@ -329,8 +329,8 @@ available [here](https://huggingface.co/tatsu-lab)) includes:
 - `feedme-human`, the FeedME method trained on human preferences.
 - `reward-condition-sim`, the reward conditioning method trained on simulated preferences.
 
-To download these checkpoints, first make sure to have a LLaMA-7B
-checkpoint [converted into the huggingface format](https://huggingface.co/docs/transformers/main/model_doc/llama).
+To download and recover these checkpoints, first make sure to have a LLaMA-7B
+checkpoint [converted into the Hugging Face format](https://huggingface.co/docs/transformers/main/model_doc/llama) **with transformers>=4.29.2**.
 Then, run the following to download all AlpacaFarm models:
 
 ```

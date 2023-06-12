@@ -1,4 +1,6 @@
 import argparse
+import json
+import logging
 import os
 
 import numpy as np
@@ -8,6 +10,8 @@ from huggingface_hub import HfApi, hf_hub_download
 
 from alpaca_farm.models.reward_model import RewardConfig, RewardModel
 from alpaca_farm.utils import stable_resize_token_embeddings_and_tokenizer
+
+min_transformers_version = "4.29.2"
 
 
 def get_alpaca_farm_model_names():
@@ -49,6 +53,17 @@ def load_weight_diff(hf_hub_name, is_reward_model=False, device="cpu", path_to_s
 
 
 def load_raw_model(model_dir, device="cpu"):
+    config_path = os.path.join(model_dir, "config.json")
+    config = json.load(open(config_path, "r"))
+    transformers_version = config["transformers_version"]
+    if transformers_version <= min_transformers_version:
+        logging.warning(
+            f"Your base LLaMA checkpoint is converted with transformers=={transformers_version}, "
+            f"but transformers>={min_transformers_version} is expected. "
+            f"This may produce a corrupted checkpoint and lead to unexpected behavior. "
+            f"Please regenerate your base LLaMA checkpoint with transformers>={min_transformers_version}."
+        )
+
     model_raw = transformers.AutoModelForCausalLM.from_pretrained(
         model_dir, device_map={"": torch.device(device)}, torch_dtype=torch.float32
     )
