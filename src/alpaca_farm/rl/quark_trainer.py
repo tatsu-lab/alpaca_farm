@@ -150,7 +150,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
         ):
             if step_idx % self.args.save_steps == 0 or step_idx in self.args.save_steps_extra_list:
                 self.save_model(utils.join(self.args.output_dir, f"checkpoint-{step_idx}"))
-            if step_idx % self.args.eval_steps == 0:
+            if self.args.eval_steps is not None and step_idx % self.args.eval_steps == 0:
                 unwrapped_policy = self.accelerator.unwrap_model(self.policy, keep_fp32_wrapper=True)
                 unwrapped_policy = unwrapped_policy.base_model
                 self.evaluate(step_idx, unwrapped_policy=unwrapped_policy)
@@ -303,11 +303,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             rewards = self.reward_model(**sequences).rewards
 
             # Nothing in here should contain the reward token!
-            self.data_pool.add(
-                queries=text_queries,
-                responses=text_responses,
-                rewards=rewards.tolist(),
-            )
+            self.data_pool.add(queries=text_queries, responses=text_responses, rewards=rewards.tolist())
 
             text_queries_all.extend(text_queries)
             text_responses_all.extend(text_responses)
