@@ -27,7 +27,7 @@ from transformers.modeling_utils import unwrap_model
 from .. import accelerate_patch, common, constants, data_utils, logging, utils
 from ..models import reward_model as reward_model_module
 from ..models import rl_models
-from ..types import LRScheduler, Optional, Tensor
+from ..types import AnyPath, AnyPathOrNone, LRScheduler, Optional, Tensor
 from . import kl_controller, rl_trainer
 
 FIRST_STEP_IDX = 1
@@ -137,19 +137,13 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             total=total_steps,
         ):
             if step_idx % self.args.save_steps == 0 or step_idx in self.args.save_steps_extra_list:
-                self.save_model(self.args.output_dir + f"_ckpt_{step_idx}")
+                self.save_model(utils.join(self.args.output_dir, f"checkpoint-{step_idx}"))
             if step_idx % self.args.eval_steps == 0:
                 unwrapped_policy = self.accelerator.unwrap_model(self.policy, keep_fp32_wrapper=True)
                 unwrapped_policy = unwrapped_policy.base_model
                 self.evaluate(step_idx, unwrapped_policy=unwrapped_policy)
             self.log_history.append(self.step(infinite_train_dataloader, step_idx))
         return self.log_history
-
-    @property
-    def unwrapped_optimizer(self):
-        if not hasattr(self, "optimizer") or self.optimizer is None:
-            return None
-        return self.accelerator.unwrap_optimizer(self.optimizer)  # noqa
 
     def step(self, train_dataloader, step_idx, **kwargs):
         rollouts_dataloader = self.rollout(train_dataloader, step_idx)
@@ -176,7 +170,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
                             self.accelerator.clip_grad_norm_(self.policy.parameters(), self.args.max_grad_norm)
                         stats_for_this_step["loss/grad_norm"] = self._compute_grad_norm()
                         stats_list.append(stats_for_this_step)
-                        self.unwrapped_optimizer.step()
+                        self.accelerator.unwrap_optimizer(self.optimizer).step()
                         self.policy.zero_grad(set_to_none=True)
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
@@ -386,6 +380,43 @@ class QuarkTrainer(rl_trainer.RLTrainer):
 
             # Good practice: save your training arguments together with the trained model
             torch.save(self.args, os.path.join(output_dir, constants.TRAINING_ARGS_NAME))
+
+
+def _make_left_padded_tokenizer(
+    model_name_or_path: AnyPath,
+    cache_dir: AnyPathOrNone = constants.DEFAULT_CACHE_DIR,
+    **kwargs,
+) -> transformers.PreTrainedTokenizer:
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        model_name_or_path,
+        cache_dir=cache_dir,
+        padding_side="left",
+        **kwargs,
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.add_special_tokens(dict(pad_token=constants.DEFAULT_PAD_TOKEN))
+    return tokenizer
+
+
+def make_tokenizer(args):
+    # policy_tokenizer left pads, since the policy requires batch decoding.
+    policy_tokenizer = _make_left_padded_tokenizer(
+        args.policy_model_name_or_path, cache_dir=args.cache_dir, use_fast=args.use_fast_tokenizer
+    )
+    # reward_tokenizer left pads, since we need the embedding of the right most non-pad token.
+    reward_tokenizer = _make_left_padded_tokenizer(
+        args.reward_model_name_or_path, cache_dir=args.cache_dir, use_fast=args.use_fast_tokenizer
+    )
+    if policy_tokenizer.get_vocab() != reward_tokenizer.get_vocab():
+        raise ValueError("AlpacaFarm does not support different tokenizer for policy and reward models.")
+
+    # TODO: Don't forget the post-processor.
+    if not args.best_token_only and args.num_reward_tokens > 0:  # Insert reward tokens for all-quantiles Quark.
+        logger.warning(f"Adding {args.num_reward_tokens} reward tokens.")
+        policy_tokenizer.add_special_tokens(
+            {"additional_special_tokens": [f"<reward_{i}>" for i in range(args.num_reward_tokens)]}  # noqa
+        )
+    return policy_tokenizer
 
 
 def make_models(
