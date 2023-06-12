@@ -415,7 +415,7 @@ class DataCollatorForBinaryRewardModelingDataset(object):
         )
 
 
-class QueryResponseDataset(Dataset):
+class QueryDataset(Dataset):
     """Dataset that emits tokenized left-padded queries."""
 
     def __init__(
@@ -426,7 +426,7 @@ class QueryResponseDataset(Dataset):
         query_len: int,
         df_postprocessor: Optional[Callable] = None,
     ):
-        super(QueryResponseDataset, self).__init__()
+        super(QueryDataset, self).__init__()
 
         if df_postprocessor is not None:
             df = df_postprocessor(df)
@@ -466,7 +466,11 @@ class QueryResponseDataset(Dataset):
         return len(self.queries)
 
 
+class QueryResponseDataset(Dataset):
+    pass
+
+
 @dataclasses.dataclass
-class DataCollatorForQueryResponseDataset(object):
+class DataCollatorForStackableDataset(object):
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
         return {key: torch.stack([instance[key] for instance in instances]) for key in instances[0].keys()}

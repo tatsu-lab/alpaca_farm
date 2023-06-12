@@ -1,3 +1,17 @@
+# Copyright 2023 The Alpaca Team
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Reward conditioning a la QUARK.
 
@@ -24,7 +38,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import StateDictType
 from torch.utils.data import DataLoader
 from transformers.modeling_utils import unwrap_model
 
-from .. import accelerate_patch, common, constants, data_utils, logging, utils
+from .. import accelerate_patch, common, constants, data_preprocessor, data_utils, logging, utils
 from ..models import reward_model as reward_model_module
 from ..models import rl_models
 from ..types import AnyPath, AnyPathOrNone, LRScheduler, Optional, Tensor
@@ -89,8 +103,8 @@ class QuarkTrainer(rl_trainer.RLTrainer):
     def __init__(
         self,
         args,
-        train_dataset: data_utils.QueryResponseDataset,
-        eval_dataset: data_utils.QueryResponseDataset,
+        train_dataset: data_utils.QueryDataset,
+        eval_dataset: data_utils.QueryDataset,
         data_collator: Callable,
         policy: nn.Module,
         ref_policy: nn.Module,
@@ -306,8 +320,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             self.accelerator.log({"train/reward": utils.mean(rewards_all)}, step=step_idx)
 
         text_queries, text_responses, _ = self.data_pool.sort_and_get(best_token_only=self.args.best_token_only)
-        # TODO: fix this.
-        rollouts_dataset = data_utils.QueryResponseDataset(
+        rollouts_dataset = data_preprocessor.QueryResponseDataset(
             tokenizer=self.tokenizer,
             queries=text_queries,
             responses=text_responses,
@@ -316,7 +329,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
         )
         rollouts_dataloader = DataLoader(
             dataset=rollouts_dataset,
-            collate_fn=data_utils.DataCollatorForQueryResponseDataset(),
+            collate_fn=data_utils.DataCollatorForStackableDataset(),
             batch_size=self.args.step_per_device_batch_size,
             shuffle=True,
             drop_last=True,

@@ -41,8 +41,8 @@ class RLTrainer(object):
     def __init__(
         self,
         args,
-        train_dataset: data_preprocessor.QueryResponseDataset,
-        eval_dataset: data_preprocessor.QueryResponseDataset,
+        train_dataset: data_preprocessor.QueryDataset,
+        eval_dataset: data_preprocessor.QueryDataset,
         data_collator: Callable,
         policy: nn.Module,
         ref_policy: nn.Module,

@@ -20,9 +20,9 @@ from . import logging, utils
 from .data_preprocessor import (
     BinaryRewardModelingDataset,
     DataCollatorForBinaryRewardModelingDataset,
-    DataCollatorForQueryResponseDataset,
     DataCollatorForSFTDataset,
-    QueryResponseDataset,
+    DataCollatorForStackableDataset,
+    QueryDataset,
     SFTDataset,
     split_train_into_train_and_eval,
 )
@@ -103,18 +103,16 @@ def make_rl_data_module(
     train_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.train_splits])
     eval_df = pd.concat([pd.DataFrame(alpaca_instructions[split]) for split in data_args.eval_splits])
 
-    train_dataset = QueryResponseDataset(
+    train_dataset = QueryDataset(
         df=train_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
         query_len=training_args.query_len,
     )
-    eval_dataset = QueryResponseDataset(
+    eval_dataset = QueryDataset(
         df=eval_df,
         prompt_dict=prompt_dict,
         tokenizer=tokenizer,
         query_len=training_args.query_len,
     )
-    return dict(
-        train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=DataCollatorForQueryResponseDataset()
-    )
+    return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=DataCollatorForStackableDataset())
