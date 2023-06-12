@@ -415,7 +415,7 @@ class DataCollatorForBinaryRewardModelingDataset(object):
         )
 
 
-class QueryResponseDataset(Dataset):
+class QueryDataset(Dataset):
     """Dataset that emits tokenized left-padded queries."""
 
     def __init__(
@@ -425,19 +425,19 @@ class QueryResponseDataset(Dataset):
         tokenizer: transformers.PreTrainedTokenizer,
         query_len: int,
         df_postprocessor: Optional[Callable] = None,
+        prompt_postprocessor: Optional[Callable] = None,
     ):
-        super(QueryResponseDataset, self).__init__()
+        super(QueryDataset, self).__init__()
 
         if df_postprocessor is not None:
             df = df_postprocessor(df)
         list_dict_data = df.to_dict(orient="records")
 
-        # prompts are strings; queries are tensors.
         prompts = [format_prompt(example=dict_data, prompt_dict=prompt_dict) for dict_data in list_dict_data]
-        queries = [
-            tokenizer(prompt, return_tensors="pt", truncation=False).input_ids.squeeze(dim=0) for prompt in prompts
-        ]
+        if prompt_postprocessor is not None:
+            prompts = [prompt_postprocessor(prompt) for prompt in prompts]
 
+        queries = [tokenizer(prompt, return_tensors="pt", truncation=False).input_ids[0] for prompt in prompts]
         filtered_queries = [query for query in queries if len(query) <= query_len]
         logger.warning(
             f"Filtered out {len(queries) - len(filtered_queries)} instances out of {len(queries)} that "
@@ -459,14 +459,70 @@ class QueryResponseDataset(Dataset):
         self.list_dict_data = list_dict_data
 
     def __getitem__(self, i):
-        return_dict = dict(queries=self.queries[i], query_attn_masks=self.query_attn_masks[i])
-        return return_dict
+        return dict(queries=self.queries[i], query_attn_masks=self.query_attn_masks[i])
+
+    def __len__(self):
+        return len(self.queries)
+
+
+class QueryResponseDataset(Dataset):
+    def __init__(
+        self,
+        tokenizer: transformers.PreTrainedTokenizer,
+        queries: Sequence[str],
+        responses: Sequence[str],
+        query_len: int,
+        response_len: int,
+    ):
+        super(QueryResponseDataset, self).__init__()
+
+        def tokenize_without_truncation(strings):
+            return [tokenizer(string, return_tensors="pt", truncation=False).input_ids[0] for string in strings]
+
+        sequences = [query + response for query, response in utils.zip_(queries, responses)]
+
+        queries = tokenize_without_truncation(queries)
+        sequences = tokenize_without_truncation(sequences)
+        responses = [sequence[len(query) :] for sequence, query in utils.zip_(sequences, queries)]
+
+        filtered_pairs = [
+            (query, response)
+            for query, response in utils.zip_(queries, responses)
+            if len(query) <= query_len and len(response) <= response_len
+        ]
+        filtered_queries = [query for query, _ in filtered_pairs]
+        filtered_responses = [response for _, response in filtered_pairs]
+
+        logger.warning(
+            f"Filtered out {len(queries) - len(filtered_queries)} instances out of {len(queries)} that "
+            f"exceed length limit... "
+            f"These examples are not used for training. "
+            f"However they won't be ignored if this is eval set that is used in `RLTrainer.evaluate`."
+        )
+
+        def left_pad_and_stack(list_of_tensors: Sequence[torch.Tensor], target_len: int):
+            return torch.stack(
+                [
+                    torch_ops.left_pad(tensor, target_size=(target_len,), value=tokenizer.pad_token_id)
+                    for tensor in list_of_tensors
+                ]
+            )
+
+        queries = left_pad_and_stack(filtered_queries, query_len)
+        responses = left_pad_and_stack(filtered_responses, response_len)
+
+        self.queries = queries
+        self.responses = responses
+        self.query_attn_masks = queries.ne(tokenizer.pad_token_id).long()
+
+    def __getitem__(self, i):
+        return dict(queries=self.queries[i], responses=self.responses[i], query_attn_masks=self.query_attn_masks[i])
 
     def __len__(self):
         return len(self.queries)
 
 
 @dataclasses.dataclass
-class DataCollatorForQueryResponseDataset(object):
+class DataCollatorForStackableDataset(object):
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
         return {key: torch.stack([instance[key] for instance in instances]) for key in instances[0].keys()}

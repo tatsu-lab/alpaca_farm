@@ -39,8 +39,8 @@ class PPOTrainer(rl_trainer.RLTrainer):
     def __init__(
         self,
         args,
-        train_dataset: data_preprocessor.QueryResponseDataset,
-        eval_dataset: data_preprocessor.QueryResponseDataset,
+        train_dataset: data_preprocessor.QueryDataset,
+        eval_dataset: data_preprocessor.QueryDataset,
         data_collator: Callable,
         policy: rl_models.ActorCritic,
         ref_policy: rl_models.Policy,

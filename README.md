@@ -236,7 +236,7 @@ To replicate our RLHF PPO model trained with simulated reward model in the paper
 
 ```bash
 bash examples/scripts/rlhf_ppo.sh \
-  <your_output_dir> \
+  <your_output_dir_for_ppo> \
   <your_wandb_run_name> \
   <your_output_dir_for_reward_model> \
   <your_output_dir_for_sft10k> \
@@ -299,6 +299,19 @@ bash examples/scripts/expiter.sh \
   <your_output_dir_for_expiter_data>
 ```
 
+### Quark
+
+To replicate our Quark results for the AlpacaFarm evaluation suite, run
+
+```bash
+bash examples/scripts/rlhf_quark.sh \
+  <your_output_dir_for_quark> \
+  <your_wandb_run_name> \
+  <your_output_dir_for_reward_model> \
+  <your_output_dir_for_sft10k> \
+  <kl_coef>
+```
+
 ### OpenAI models
 
 To run the OpenAI reference models with our prompts and decoding hyperparameters, run
@@ -315,7 +328,7 @@ You can then use the generated samples at `<save_path>` directly with our automa
 
 We provide model checkpoints for reward models and all our reference methods, listed in Table 2 of
 our [paper](https://arxiv.org/abs/2305.14387). Concretely, we tune each reference method in AlpacaFarm simulation and on
-human preference data and release both versions. The current list of models 
+human preference data and release both versions. The current list of models
 (available [here](https://huggingface.co/tatsu-lab)) includes:
 
 - `sft10k`, the supervised learning base model that we collect preference data with.
@@ -330,7 +343,8 @@ human preference data and release both versions. The current list of models
 - `reward-condition-sim`, the reward conditioning method trained on simulated preferences.
 
 To download and recover these checkpoints, first make sure to have a LLaMA-7B
-checkpoint [converted into the Hugging Face format](https://huggingface.co/docs/transformers/main/model_doc/llama) **with transformers>=4.29.2**.
+checkpoint [converted into the Hugging Face format](https://huggingface.co/docs/transformers/main/model_doc/llama) **
+with transformers>=4.29.2**.
 Then, run the following to download all AlpacaFarm models:
 
 ```
@@ -350,11 +364,6 @@ python -m pretrained_models.recover_model_weights \
 
 To download either of the reward models individually, you'll need to have `sft10k` downloaded first
 to `<dir_to_save_all_models>`.
-
-## Coming soon
-
-- [ ] Quark implementation
-- [ ] Direct Preference Optimization
 
 ## Citation
 
