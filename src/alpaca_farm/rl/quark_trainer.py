@@ -281,7 +281,7 @@ class QuarkTrainer(rl_trainer.RLTrainer):
             queries, query_attn_masks = common.unpack_dict(
                 common.prepare_inputs(batch, device=self.accelerator.device), keys=("queries", "query_attn_masks")
             )
-            if step_idx == 1:  # Must ignore the reward token on first generation.
+            if step_idx == FIRST_STEP_IDX:  # Must ignore the reward token on first generation.
                 queries, query_attn_masks = ignore_tokens(
                     input_ids=queries,
                     attention_mask=query_attn_masks,
