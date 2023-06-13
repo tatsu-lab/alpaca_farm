@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import logging
 import os
 import re
@@ -397,7 +398,7 @@ class PairwiseAutoAnnotator:
 
     def _annotate(self, df_to_annotate: pd.DataFrame, **decoding_kwargs) -> pd.DataFrame:
         """Annotate the examples."""
-        curr_decoding_kwargs = self.decoding_kwargs
+        curr_decoding_kwargs = copy.deepcopy(self.decoding_kwargs)
         curr_decoding_kwargs.update(decoding_kwargs)
 
         df_annotated = df_to_annotate
