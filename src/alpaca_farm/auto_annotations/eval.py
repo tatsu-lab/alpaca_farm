@@ -5,10 +5,8 @@ from typing import Union
 import datasets
 import pandas as pd
 
-from alpaca_farm import constants
-from alpaca_farm.auto_annotations import PairwiseAutoAnnotator
-from alpaca_farm.auto_annotations.analysis import head2head_to_metrics
-
+from .. import constants
+from . import analysis, pairwise_annotators
 from . import utils as ann_utils
 
 __all__ = ["alpaca_leaderboard"]
@@ -133,9 +131,9 @@ def alpaca_leaderboard(
         We are computing the metrics on all examples you gave."""
         )
 
-    annotator = PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
+    annotator = pairwise_annotators.PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
     annotated = annotator.annotate_head2head(outputs_1=outputs_baseline, outputs_2=all_outputs)
-    all_metrics[name] = head2head_to_metrics(preferences=[a["preference"] for a in annotated])
+    all_metrics[name] = analysis.head2head_to_metrics(preferences=[a["preference"] for a in annotated])
 
     df_results = pd.DataFrame(all_metrics).T.sort_values(by="win_rate", ascending=False)
 
