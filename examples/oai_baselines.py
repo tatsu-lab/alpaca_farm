@@ -19,7 +19,7 @@ import datasets
 import fire
 import pandas as pd
 
-import alpaca_farm.auto_annotations.utils as ann_utils
+import alpaca_eval.utils as eval_utils
 from alpaca_farm import constants, data_preprocessor, logging, openai_utils, types, utils
 
 logger = logging.get_logger(__name__)
@@ -31,6 +31,7 @@ MODEL_TO_PROMPTS = {
 }
 
 
+# TODO: all of this could just use alpaca_eval
 def main_oai_baselines(
     all_instructions: Optional[types.AnyData] = None,
     model_name: str = "text-davinci-003",
@@ -70,7 +71,7 @@ def main_oai_baselines(
         )["eval"]
 
     prompts, list_dict_data, _ = data_preprocessor.format_prompt_with_data_frame(
-        df=ann_utils.convert_to_dataframe(all_instructions),
+        df=eval_utils.convert_to_dataframe(all_instructions),
         prompt_dict=utils.jload(prompt_path),
     )
 
@@ -93,7 +94,7 @@ def main_oai_baselines(
         **kwargs,
     )
 
-    df_data = ann_utils.convert_to_dataframe(list_dict_data)
+    df_data = eval_utils.convert_to_dataframe(list_dict_data)
     df_data["output"] = completions
     df_data["generator"] = model_name
     columns_to_keep = [
