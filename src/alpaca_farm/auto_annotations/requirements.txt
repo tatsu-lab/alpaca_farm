@@ -1,5 +1,0 @@
-datasets
-openai
-pandas
-tiktoken>=0.3.2
-fire
