@@ -71,16 +71,7 @@ packages.
 **Notebook
 example:** [![Using](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tatsu-lab/alpaca_farm/blob/main/examples/auto_annotations.ipynb)
 
-<details>
-  <summary><b>Installing auto annotators with minimal dependencies</b></summary>
-    To install only the set of dependencies for simulating pairwise preference, run
-
-```bash
-pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
-```
-
-</details>
+For all the evaluation and annotations we use [**AlpacaEval**](https://github.com/tatsu-lab/alpaca_eval/tree/main#making-a-new-evaluator) with our pool of automatic annotators and additional noise to simulate human annotators.
 
 To get started, set the environment variable `OPENAI_API_KEY` to your OpenAI API key, and (optionally) `OPENAI_ORG` to
 the
@@ -112,12 +103,12 @@ annotator = PairwiseAutoAnnotator()
 annotated = annotator.annotate_pairs(outputs_pairs)
 
 print(annotated[-1:])
-# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
-#   'input': '',
-#   'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
-#   'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
-#   'annotator': 'davinci003_3',
-#   'preference': 1.0}]
+# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.', 
+# 'input': '', 
+# 'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]", 
+# 'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
+# 'annotator': 'chatgpt_2', 
+# 'preference': 2}]
 ```
 
 If instead of pairs you have a list of sampled outputs, you can use the following.
@@ -125,27 +116,18 @@ If instead of pairs you have a list of sampled outputs, you can use the followin
 ```python
 multisample_outputs = [dict(instruction="repeat the following", input="yes", output=["yes", "no", "maybe", "repeat"])]
 print(annotator.annotate_samples(multisample_outputs))
-# [{'sample_id': 0,
-#   'instruction': 'repeat the following',
-#   'input': 'yes',
-#   'output_1': 'yes',
-#   'output_2': 'no',
-#   'annotator': 'gpt4_2',
+# [{'sample_id': 0, 
+#   'instruction': 'repeat the following', 
+#   'input': 'yes', 
+#   'output_1': 'yes', 
+#   'output_2': 'maybe', 
+#   'annotator': 'chatgpt_2', 
 #   'preference': 1}]
 ```
 
 ## Running automatic evaluation
 
-<details>
-  <summary><b>Installing auto annotators with minimal dependencies</b></summary>
-    To install only the auto annotators with minimal additional packages use the following
-
-```bash
-pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
-```
-
-</details>
+For all the evaluation we use [**AlpacaEval**](https://github.com/tatsu-lab/alpaca_eval/tree/main#making-a-new-evaluator) with our pool of automatic annotators. 
 
 To get started, set the environment variable OPENAI_API_KEY to your OpenAI API key, and (optionally) OPENAI_ORG to the
 organization ID. You can do this by running
