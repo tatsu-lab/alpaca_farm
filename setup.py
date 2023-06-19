@@ -55,6 +55,8 @@ setuptools.setup(
             "flash-attn",
             "apex",
             "deepspeed",
+            # eval
+            "alpaca_eval",
             # Plotting and visualization.
             "benepar",
             "spacy",
