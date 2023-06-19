@@ -1,13 +1,14 @@
 davinci003_3 : # text-davinci-003_v1_b5-pairwise_temp=1.0
-  prompt_templates:
-    with_inputs: "annotators/annotator_pool_v0/text_b5_with_inputs.txt"
-    without_inputs: "annotators/annotator_pool_v0/text_b5_without_inputs.txt"
-  fn_decoder: "openai_completions"
-  decoder_kwargs:
+  prompt_template:
+    with_inputs: "annotator_pool_v0/text_b5_with_inputs.txt"
+    without_inputs: "annotator_pool_v0/text_b5_without_inputs.txt"
+  fn_completions: "openai_completions"
+  completions_kwargs:
     model_name: "text-davinci-003"
     max_tokens: 200
-    temperature: 0.0
-  outputs_to_match:
-    1: '\n\(a\)'
-    2: '\n\(b\)'
+    temperature: 1.0
+  completion_parser_kwargs:
+    outputs_to_match:
+      1: '\n\(a\)'
+      2: '\n\(b\)'
   batch_size: 5
