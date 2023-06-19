@@ -1,18 +1,26 @@
 import json
 import logging
-from typing import Union
+from typing import Any, Optional, Sequence, Union
+from pathlib import Path
 
 import datasets
 import pandas as pd
 
-from .. import constants
-from . import analysis, pairwise_annotators
-from . import utils as ann_utils
+import alpaca_eval.annotators as eval_annotators
+from alpaca_eval import metrics
+import alpaca_eval.utils as eval_utils
 
-__all__ = ["alpaca_leaderboard"]
+from .. import constants
+
+
+__all__ = ["alpaca_leaderboard", "PairwiseAutoAnnotator"]
+
+CURRENT_DIR = Path(__file__).parent
+ANNOTATORS_CONFIG_DIR = CURRENT_DIR / "annotators"
+
 
 PRECOMPUTED_LEADERBOARD = {
-    "annotators/annotator_pool_v0/configs.yaml": {
+    "annotator_pool_v0/configs.yaml": {
         # Internal codename: rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20
         "RLHF PPO": {
             "n_draws": 9.0,
@@ -76,9 +84,10 @@ PRECOMPUTED_LEADERBOARD = {
 }
 
 
+# all of this should be replaced with alpaca_eval functions
 def alpaca_leaderboard(
-    path_or_all_outputs: Union[ann_utils.AnyData, ann_utils.AnyPath],
-    annotators_config: ann_utils.AnyPath = "annotators/annotator_pool_v0/configs.yaml",
+    path_or_all_outputs: Union[eval_utils.AnyData, eval_utils.AnyPath],
+    annotators_config: eval_utils.AnyPath = "annotator_pool_v0/configs.yaml",
     name: str = "Current method",
     is_add_reference_methods: bool = True,
     is_print_metrics: bool = False,
@@ -131,9 +140,11 @@ def alpaca_leaderboard(
         We are computing the metrics on all examples you gave."""
         )
 
-    annotator = pairwise_annotators.PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
-    annotated = annotator.annotate_head2head(outputs_1=outputs_baseline, outputs_2=all_outputs)
-    all_metrics[name] = analysis.head2head_to_metrics(preferences=[a["preference"] for a in annotated])
+    outputs_1 = eval_utils.load_or_convert_to_dataframe(outputs_baseline)
+    outputs_2 = eval_utils.load_or_convert_to_dataframe(all_outputs)
+    annotator = PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
+    annotated = annotator.annotate_head2head(outputs_1=outputs_1, outputs_2=outputs_2)
+    all_metrics[name] = metrics.pairwise_to_winrate(preferences=[a["preference"] for a in annotated])
 
     df_results = pd.DataFrame(all_metrics).T.sort_values(by="win_rate", ascending=False)
 
@@ -141,3 +152,56 @@ def alpaca_leaderboard(
         print(df_results.to_string(float_format="%.2f"))
     else:
         return df_results
+
+
+class PairwiseAutoAnnotator(eval_annotators.PairwiseAnnotator):
+    def __init__(
+        self,
+        annotators_config: Union[eval_utils.AnyPath, list[dict[str, Any]]] = "annotator_pool_v0",
+        input_keys: Sequence[str] = ("instruction", "input"),
+        p_label_flip: Optional[float] = None,
+        base_dir: eval_utils.AnyPath = ANNOTATORS_CONFIG_DIR,
+        other_keys_to_keep: Sequence[str] = tuple(),
+        **kwargs,
+    ):
+        super().__init__(
+            annotators_config=annotators_config,
+            input_keys=input_keys,
+            p_label_flip=p_label_flip,
+            base_dir=base_dir,
+            other_keys_to_keep=other_keys_to_keep,
+            **kwargs,
+        )
+
+    @property
+    def SingleAnnotator(self):
+        return SinglePairwiseAutoAnnotator
+
+
+class SinglePairwiseAutoAnnotator(eval_annotators.SinglePairwiseAnnotator):
+    def _get_prompt_template(self, prompt_template: dict[str, str]):
+        # prompt_template will now be a dictionary of prompt templates of len 2 (one with and one without input)
+        _get_prompt_template = super()._get_prompt_template
+        return {k: _get_prompt_template(prompt) for k, prompt in prompt_template.items()}
+
+    def make_prompts(self, df_to_annotate, prompt_template=None):
+        if prompt_template is None:
+            prompt_template = self.prompt_template
+
+        arr_is_inputs = (df_to_annotate["input"] != "") & (df_to_annotate["input"].notnull())
+        df_with_inputs = df_to_annotate[arr_is_inputs]
+        df_without_inputs = df_to_annotate[~arr_is_inputs]
+
+        prompts, df = super().make_prompts(
+            df_without_inputs,
+            prompt_template=prompt_template["without_inputs"],
+        )
+        if arr_is_inputs.any():
+            prompts_i, df_i = super().make_prompts(
+                df_with_inputs,
+                prompt_template=prompt_template["with_inputs"],
+            )
+            prompts += prompts_i
+            df = pd.concat([df, df_i], axis=0, ignore_index=True)
+
+        return prompts, df
