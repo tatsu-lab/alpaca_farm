@@ -247,9 +247,9 @@ bash examples/scripts/rlhf_ppo.sh \
 according
 to the previous step.
 Note the KL penalty coefficient for human reward PPO is much larger than for simulated PPO.
-Set `<kl_coef>` to `0.0067` for simulated PPO, and `0.0002` for human PPO to recover our original results.
-Performance of the PPO model is typically much better than SFT at 20-80 PPO steps (less than 4 pass through the entire
-set of instructions), and starts to decay with more PPO steps.
+Set `<kl_coef>` to `0.0067` for simulated PPO, and `0.02` for human PPO to recover our original results.
+Performance of the PPO model is typically much better than SFT at 20-80 PPO steps (less than 4 passes through the entire
+set of instructions) and starts to decay with more PPO steps.
 
 ### Best-of-n decoding
 
