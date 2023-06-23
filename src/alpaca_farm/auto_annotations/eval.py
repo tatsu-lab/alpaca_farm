@@ -37,6 +37,15 @@ PRECOMPUTED_LEADERBOARD = {
             "standard_error": 1.707927043869429,
             "win_rate": 39.75155279503105,
         },
+        # Internal codename: sft_v6_llama_7b_regen_v7_3ep
+        "SFT 10k": {
+            "n_draws": 19.0,
+            "n_total": 802.0,
+            "n_wins": 278.00,
+            "n_wins_base": 505.00,
+            "standard_error": 1.67,
+            "win_rate": 35.85,
+        },
         "Davinci001": {
             "n_draws": 0.0,
             "n_total": 805.0,
