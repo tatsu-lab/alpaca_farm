@@ -152,15 +152,15 @@ path_to_outputs = "examples/data/eval_gpt-3.5-turbo-0301.json"
 # ...]
 
 alpaca_leaderboard(path_or_all_outputs=path_to_outputs, name="My fancy model", is_print_metrics=True)
-#                                         n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
-# GPT4                                      17.00   805.00  639.00       149.00            1.38     80.43
-# ChatGPT                                    9.00   804.00  489.00       306.00            1.71     61.38
-# My fancy model                             9.00   804.00  483.00       312.00            1.71     60.63
-# RLHF PPO                                   9.00   803.00  370.00       424.00            1.75     46.64
-# SFT 52k (Alpaca 7B)                       16.00   804.00  320.00       468.00            1.72     40.80
-# SFT 10k                                   19.00   802.00  278.00       505.00            1.67     35.85
-# Davinci001                                 0.00   805.00  201.00       604.00            1.53     24.97
-# LLaMA 7B                                   0.00   786.00   94.00       692.00            1.16     11.96
+#                      n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
+# GPT4                   17.00   804.00  631.00       156.00            1.40     79.54
+# ChatGPT                 9.00   805.00  503.00       293.00            1.69     63.04
+# My fancy model          9.00   803.00  497.00       297.00            1.70     62.45
+# RLHF PPO                9.00   805.00  392.00       404.00            1.75     49.25
+# SFT 52k (Alpaca 7B)    16.00   805.00  312.00       477.00            1.71     39.75
+# SFT 10k                19.00   802.00  278.00       505.00            1.67     35.85
+# Davinci001              0.00   805.00  201.00       604.00            1.53     24.97
+# LLaMA 7B                0.00   775.00   98.00       677.00            1.19     12.65
 ```
 
 If you want to compare against our baseline model (Davinci003 with
