@@ -1,35 +1,41 @@
 import json
 import logging
-from typing import Union
+from pathlib import Path
+from typing import Any, Optional, Sequence, Union
 
+import alpaca_eval.annotators as eval_annotators
+import alpaca_eval.utils as eval_utils
 import datasets
 import pandas as pd
+from alpaca_eval import metrics
 
 from .. import constants
-from . import analysis, pairwise_annotators
-from . import utils as ann_utils
 
-__all__ = ["alpaca_leaderboard"]
+__all__ = ["alpaca_leaderboard", "PairwiseAutoAnnotator"]
+
+CURRENT_DIR = Path(__file__).parent
+ANNOTATORS_CONFIG_DIR = CURRENT_DIR / "annotators"
+
 
 PRECOMPUTED_LEADERBOARD = {
-    "annotators/annotator_pool_v0/configs.yaml": {
+    "annotator_pool_v0/configs.yaml": {
         # Internal codename: rlhf_llama_7b_regen_v7_3ep_v12_ckpt_20
         "RLHF PPO": {
             "n_draws": 9.0,
-            "n_total": 803.0,
-            "n_wins": 370.0,
-            "n_wins_base": 424.0,
-            "standard_error": 1.751619984513092,
-            "win_rate": 46.63760896637609,
+            "n_total": 805.0,
+            "n_wins": 392.0,
+            "n_wins_base": 404.0,
+            "standard_error": 1.753281981205392,
+            "win_rate": 49.25465838509317,
         },
         # Internal codename: sft_v6_52k_llama_7b_regen_v7_3ep_recover
         "SFT 52k (Alpaca 7B)": {
             "n_draws": 16.0,
-            "n_total": 804.0,
-            "n_wins": 320.0,
-            "n_wins_base": 468.0,
-            "standard_error": 1.7163543811890173,
-            "win_rate": 40.79601990049751,
+            "n_total": 805.0,
+            "n_wins": 312.0,
+            "n_wins_base": 477.0,
+            "standard_error": 1.707927043869429,
+            "win_rate": 39.75155279503105,
         },
         # Internal codename: sft_v6_llama_7b_regen_v7_3ep
         "SFT 10k": {
@@ -50,35 +56,36 @@ PRECOMPUTED_LEADERBOARD = {
         },
         "ChatGPT": {
             "n_draws": 9.0,
-            "n_total": 804.0,
-            "n_wins": 489.0,
-            "n_wins_base": 306.0,
-            "standard_error": 1.707975918938111,
-            "win_rate": 61.38059701492538,
+            "n_total": 805.0,
+            "n_wins": 503.0,
+            "n_wins_base": 293.0,
+            "standard_error": 1.6920642123984606,
+            "win_rate": 63.04347826086957,
         },
         "LLaMA 7B": {
             "n_draws": 0.0,
-            "n_total": 786.0,
-            "n_wins": 94.0,
-            "n_wins_base": 692.0,
-            "standard_error": 1.1581361013229673,
-            "win_rate": 11.959287531806616,
+            "n_total": 775.0,
+            "n_wins": 98.0,
+            "n_wins_base": 677.0,
+            "standard_error": 1.1946348760380694,
+            "win_rate": 12.645161290322582,
         },
         "GPT4": {
             "n_draws": 17.0,
-            "n_total": 805.0,
-            "n_wins": 639.0,
-            "n_wins_base": 149.0,
-            "standard_error": 1.3753918376580683,
-            "win_rate": 80.43478260869566,
+            "n_total": 804.0,
+            "n_wins": 631.0,
+            "n_wins_base": 156.0,
+            "standard_error": 1.4002932714785454,
+            "win_rate": 79.53980099502488,
         },
     }
 }
 
 
+# TODO: alpaca_leaderboard could also be replaced with alpaca_eval functions
 def alpaca_leaderboard(
-    path_or_all_outputs: Union[ann_utils.AnyData, ann_utils.AnyPath],
-    annotators_config: ann_utils.AnyPath = "annotators/annotator_pool_v0/configs.yaml",
+    path_or_all_outputs: Union[eval_utils.AnyData, eval_utils.AnyPath],
+    annotators_config: eval_utils.AnyPath = "annotator_pool_v0/configs.yaml",
     name: str = "Current method",
     is_add_reference_methods: bool = True,
     is_print_metrics: bool = False,
@@ -131,9 +138,11 @@ def alpaca_leaderboard(
         We are computing the metrics on all examples you gave."""
         )
 
-    annotator = pairwise_annotators.PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
-    annotated = annotator.annotate_head2head(outputs_1=outputs_baseline, outputs_2=all_outputs)
-    all_metrics[name] = analysis.head2head_to_metrics(preferences=[a["preference"] for a in annotated])
+    outputs_1 = eval_utils.load_or_convert_to_dataframe(outputs_baseline)
+    outputs_2 = eval_utils.load_or_convert_to_dataframe(all_outputs)
+    annotator = PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
+    annotated = annotator.annotate_head2head(outputs_1=outputs_1, outputs_2=outputs_2)
+    all_metrics[name] = metrics.pairwise_to_winrate(preferences=[a["preference"] for a in annotated])
 
     df_results = pd.DataFrame(all_metrics).T.sort_values(by="win_rate", ascending=False)
 
@@ -141,3 +150,56 @@ def alpaca_leaderboard(
         print(df_results.to_string(float_format="%.2f"))
     else:
         return df_results
+
+
+class PairwiseAutoAnnotator(eval_annotators.PairwiseAnnotator):
+    def __init__(
+        self,
+        annotators_config: Union[eval_utils.AnyPath, list[dict[str, Any]]] = "annotator_pool_v0",
+        input_keys: Sequence[str] = ("instruction", "input"),
+        p_label_flip: Optional[float] = None,
+        base_dir: eval_utils.AnyPath = ANNOTATORS_CONFIG_DIR,
+        other_keys_to_keep: Sequence[str] = tuple(),
+        **kwargs,
+    ):
+        super().__init__(
+            annotators_config=annotators_config,
+            input_keys=input_keys,
+            p_label_flip=p_label_flip,
+            base_dir=base_dir,
+            other_keys_to_keep=other_keys_to_keep,
+            **kwargs,
+        )
+
+    @property
+    def SingleAnnotator(self):
+        return SinglePairwiseAutoAnnotator
+
+
+class SinglePairwiseAutoAnnotator(eval_annotators.SinglePairwiseAnnotator):
+    def _get_prompt_template(self, prompt_template: dict[str, str]):
+        # prompt_template will now be a dictionary of prompt templates of len 2 (one with and one without input)
+        _get_prompt_template = super()._get_prompt_template
+        return {k: _get_prompt_template(prompt) for k, prompt in prompt_template.items()}
+
+    def make_prompts(self, df_to_annotate, prompt_template=None):
+        if prompt_template is None:
+            prompt_template = self.prompt_template
+
+        arr_is_inputs = (df_to_annotate["input"] != "") & (df_to_annotate["input"].notnull())
+        df_with_inputs = df_to_annotate[arr_is_inputs]
+        df_without_inputs = df_to_annotate[~arr_is_inputs]
+
+        prompts, df = super().make_prompts(
+            df_without_inputs,
+            prompt_template=prompt_template["without_inputs"],
+        )
+        if arr_is_inputs.any():
+            prompts_i, df_i = super().make_prompts(
+                df_with_inputs,
+                prompt_template=prompt_template["with_inputs"],
+            )
+            prompts += prompts_i
+            df = pd.concat([df, df_i], axis=0, ignore_index=True)
+
+        return prompts, df

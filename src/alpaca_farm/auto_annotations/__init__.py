@@ -12,5 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .eval import alpaca_leaderboard
-from .pairwise_annotators import PairwiseAutoAnnotator
+from .eval import PairwiseAutoAnnotator, alpaca_leaderboard

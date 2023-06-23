@@ -6,7 +6,7 @@
 
 [![Code License](https://img.shields.io/badge/Code%20License-Apache_2.0-green.svg)](https://github.com/tatsu-lab/alpaca_farm/blob/main/LICENSE)
 [![Data License](https://img.shields.io/badge/Data%20License-CC%20By%20NC%204.0-red.svg)](https://github.com/tatsu-lab/alpaca_farm/blob/main/DATA_LICENSE)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Research and development on learning from human feedback is difficult because methods
@@ -71,16 +71,7 @@ packages.
 **Notebook
 example:** [![Using](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tatsu-lab/alpaca_farm/blob/main/examples/auto_annotations.ipynb)
 
-<details>
-  <summary><b>Installing auto annotators with minimal dependencies</b></summary>
-    To install only the set of dependencies for simulating pairwise preference, run
-
-```bash
-pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
-```
-
-</details>
+For all the evaluation and annotations we use [**AlpacaEval**](https://github.com/tatsu-lab/alpaca_eval/tree/main#making-a-new-evaluator) with our pool of automatic annotators and additional noise to simulate the variance of human annotations.
 
 To get started, set the environment variable `OPENAI_API_KEY` to your OpenAI API key, and (optionally) `OPENAI_ORG` to
 the
@@ -112,12 +103,12 @@ annotator = PairwiseAutoAnnotator()
 annotated = annotator.annotate_pairs(outputs_pairs)
 
 print(annotated[-1:])
-# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.',
-#   'input': '',
-#   'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
-#   'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
-#   'annotator': 'davinci003_3',
-#   'preference': 1.0}]
+# [{'instruction': 'If you could help me write an email to my friends inviting them to dinner on Friday, it would be greatly appreciated.', 
+# 'input': '', 
+# 'output_1': "Dear Friends, \r\n\r\nI hope this message finds you well. I'm excited to invite you to dinner on Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]", 
+# 'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
+# 'annotator': 'chatgpt_2', 
+# 'preference': 2}]
 ```
 
 If instead of pairs you have a list of sampled outputs, you can use the following.
@@ -125,27 +116,18 @@ If instead of pairs you have a list of sampled outputs, you can use the followin
 ```python
 multisample_outputs = [dict(instruction="repeat the following", input="yes", output=["yes", "no", "maybe", "repeat"])]
 print(annotator.annotate_samples(multisample_outputs))
-# [{'sample_id': 0,
-#   'instruction': 'repeat the following',
-#   'input': 'yes',
-#   'output_1': 'yes',
-#   'output_2': 'no',
-#   'annotator': 'gpt4_2',
+# [{'sample_id': 0, 
+#   'instruction': 'repeat the following', 
+#   'input': 'yes', 
+#   'output_1': 'yes', 
+#   'output_2': 'maybe', 
+#   'annotator': 'chatgpt_2', 
 #   'preference': 1}]
 ```
 
 ## Running automatic evaluation
 
-<details>
-  <summary><b>Installing auto annotators with minimal dependencies</b></summary>
-    To install only the auto annotators with minimal additional packages use the following
-
-```bash
-pip install git+https://github.com/tatsu-lab/alpaca_farm.git --no-deps
-pip install -r https://raw.githubusercontent.com/tatsu-lab/alpaca_farm/main/src/alpaca_farm/auto_annotations/requirements.txt
-```
-
-</details>
+For all the evaluation we use [**AlpacaEval**](https://github.com/tatsu-lab/alpaca_eval/tree/main#making-a-new-evaluator) with our pool of automatic annotators. 
 
 To get started, set the environment variable OPENAI_API_KEY to your OpenAI API key, and (optionally) OPENAI_ORG to the
 organization ID. You can do this by running
@@ -170,15 +152,15 @@ path_to_outputs = "examples/data/eval_gpt-3.5-turbo-0301.json"
 # ...]
 
 alpaca_leaderboard(path_or_all_outputs=path_to_outputs, name="My fancy model", is_print_metrics=True)
-#                                         n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
-# GPT4                                      17.00   805.00  639.00       149.00            1.38     80.43
-# ChatGPT                                    9.00   804.00  489.00       306.00            1.71     61.38
-# My fancy model                             9.00   804.00  483.00       312.00            1.71     60.63
-# RLHF PPO                                   9.00   803.00  370.00       424.00            1.75     46.64
-# SFT 52k (Alpaca 7B)                       16.00   804.00  320.00       468.00            1.72     40.80
-# SFT 10k                                   19.00   802.00  278.00       505.00            1.67     35.85
-# Davinci001                                 0.00   805.00  201.00       604.00            1.53     24.97
-# LLaMA 7B                                   0.00   786.00   94.00       692.00            1.16     11.96
+#                      n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
+# GPT4                   17.00   804.00  631.00       156.00            1.40     79.54
+# ChatGPT                 9.00   805.00  503.00       293.00            1.69     63.04
+# My fancy model          9.00   803.00  497.00       297.00            1.70     62.45
+# RLHF PPO                9.00   805.00  392.00       404.00            1.75     49.25
+# SFT 52k (Alpaca 7B)    16.00   805.00  312.00       477.00            1.71     39.75
+# SFT 10k                19.00   802.00  278.00       505.00            1.67     35.85
+# Davinci001              0.00   805.00  201.00       604.00            1.53     24.97
+# LLaMA 7B                0.00   775.00   98.00       677.00            1.19     12.65
 ```
 
 If you want to compare against our baseline model (Davinci003 with
