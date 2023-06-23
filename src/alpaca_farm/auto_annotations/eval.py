@@ -1,17 +1,15 @@
 import json
 import logging
-from typing import Any, Optional, Sequence, Union
 from pathlib import Path
-
-import datasets
-import pandas as pd
+from typing import Any, Optional, Sequence, Union
 
 import alpaca_eval.annotators as eval_annotators
-from alpaca_eval import metrics
 import alpaca_eval.utils as eval_utils
+import datasets
+import pandas as pd
+from alpaca_eval import metrics
 
 from .. import constants
-
 
 __all__ = ["alpaca_leaderboard", "PairwiseAutoAnnotator"]
 
@@ -135,9 +133,7 @@ def alpaca_leaderboard(
     outputs_2 = eval_utils.load_or_convert_to_dataframe(all_outputs)
     annotator = PairwiseAutoAnnotator(annotators_config=annotators_config, **kwargs)
     annotated = annotator.annotate_head2head(outputs_1=outputs_1, outputs_2=outputs_2)
-    all_metrics[name] = metrics.pairwise_to_winrate(
-        preferences=[a["preference"] for a in annotated]
-    )
+    all_metrics[name] = metrics.pairwise_to_winrate(preferences=[a["preference"] for a in annotated])
 
     df_results = pd.DataFrame(all_metrics).T.sort_values(by="win_rate", ascending=False)
 
@@ -150,9 +146,7 @@ def alpaca_leaderboard(
 class PairwiseAutoAnnotator(eval_annotators.PairwiseAnnotator):
     def __init__(
         self,
-        annotators_config: Union[
-            eval_utils.AnyPath, list[dict[str, Any]]
-        ] = "annotator_pool_v0",
+        annotators_config: Union[eval_utils.AnyPath, list[dict[str, Any]]] = "annotator_pool_v0",
         input_keys: Sequence[str] = ("instruction", "input"),
         p_label_flip: Optional[float] = None,
         base_dir: eval_utils.AnyPath = ANNOTATORS_CONFIG_DIR,
@@ -177,17 +171,13 @@ class SinglePairwiseAutoAnnotator(eval_annotators.SinglePairwiseAnnotator):
     def _get_prompt_template(self, prompt_template: dict[str, str]):
         # prompt_template will now be a dictionary of prompt templates of len 2 (one with and one without input)
         _get_prompt_template = super()._get_prompt_template
-        return {
-            k: _get_prompt_template(prompt) for k, prompt in prompt_template.items()
-        }
+        return {k: _get_prompt_template(prompt) for k, prompt in prompt_template.items()}
 
     def make_prompts(self, df_to_annotate, prompt_template=None):
         if prompt_template is None:
             prompt_template = self.prompt_template
 
-        arr_is_inputs = (df_to_annotate["input"] != "") & (
-            df_to_annotate["input"].notnull()
-        )
+        arr_is_inputs = (df_to_annotate["input"] != "") & (df_to_annotate["input"].notnull())
         df_with_inputs = df_to_annotate[arr_is_inputs]
         df_without_inputs = df_to_annotate[~arr_is_inputs]
 

@@ -15,11 +15,11 @@
 
 from typing import Optional
 
+import alpaca_eval.utils as eval_utils
 import datasets
 import fire
 import pandas as pd
 
-import alpaca_eval.utils as eval_utils
 from alpaca_farm import constants, data_preprocessor, logging, openai_utils, types, utils
 
 logger = logging.get_logger(__name__)
