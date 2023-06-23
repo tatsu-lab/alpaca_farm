@@ -48,6 +48,7 @@ setuptools.setup(
         "torch>=1.13.1",
         "fire",
         "openai",
+        "alpaca_eval",
     ],
     extras_require={
         "full": [
@@ -55,8 +56,6 @@ setuptools.setup(
             "flash-attn",
             "apex",
             "deepspeed",
-            # eval
-            "alpaca_eval",
             # Plotting and visualization.
             "benepar",
             "spacy",
