@@ -16,7 +16,7 @@ You will read a batch of examples, which are composed of the following:
 1. an Instruction we give to the AI system
 2. an Input that is provided along with the instruction
 3. Output (a), the first output from the AI system
-4. Output (b), the first output from the AI system
+4. Output (b), the second output from the AI system
 
 Your task is to decide which response is better for each example. You should answer using only Output (a) or Output (b) depending on which response is better.
 
