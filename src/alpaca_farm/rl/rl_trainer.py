@@ -147,7 +147,7 @@ class RLTrainer(object):
                         stats_for_this_step["loss/grad_norm"] = self._compute_grad_norm()
                         stats_list.append(stats_for_this_step)
                     self.optimizer.step()
-                    self.policy.zero_grad(set_to_none=True)
+                    self.optimizer.zero_grad(set_to_none=True)
         return common.merge_dict(stats_list, torch.stack)  # list of dict -> dict: str -> 1-D tensor
 
     def step(self, train_dataloader, step_idx: int):
