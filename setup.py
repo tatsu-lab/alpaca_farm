@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import re
 
@@ -19,6 +20,7 @@ import setuptools
 
 
 def parse_requirements(filename):
+    logging.warning(f"Reading requirements from {filename}")
     with open(filename, "r") as file:
         lines = [line.strip() for line in file]
     return [line for line in lines if line and not line.startswith("#")]
