@@ -56,7 +56,7 @@ def load_raw_model(model_dir, device="cpu"):
     config_path = os.path.join(model_dir, "config.json")
     config = json.load(open(config_path, "r"))
     transformers_version = config["transformers_version"]
-    if transformers_version <= min_transformers_version:
+    if transformers_version < min_transformers_version:
         logging.warning(
             f"Your base LLaMA checkpoint is converted with transformers=={transformers_version}, "
             f"but transformers>={min_transformers_version} is expected. "
