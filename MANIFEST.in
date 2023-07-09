@@ -1,1 +1,2 @@
 recursive-include src/alpaca_farm/auto_annotations/annotators *
+include requirements.txt

@@ -32,7 +32,8 @@ with open(os.path.join(here, "src", "alpaca_farm", "__init__.py")) as f:
     else:
         raise RuntimeError("Unable to find `__version__`.")
 
-install_requires = parse_requirements("requirements.txt")
+# Must use absolute path here to ensure `python3 -m build` runs when porting package to pypi.
+install_requires = parse_requirements(os.path.join(os.path.dirname(__file__), "requirements.txt"))
 
 setuptools.setup(
     name="alpaca_farm",
