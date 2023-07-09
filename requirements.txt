@@ -1,0 +1,17 @@
+datasets
+einops
+nltk
+accelerate>=0.18.0
+tabulate
+transformers>=4.26.0
+statsmodels
+tiktoken>=0.3.2
+markdown
+scikit-learn
+sentencepiece
+pandas
+wandb
+torch>=1.13.1
+fire
+openai
+alpaca_eval
