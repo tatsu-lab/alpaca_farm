@@ -7,7 +7,7 @@ import json
 def test_example():
     with open("examples/data/outputs_pairs.json") as f:
         outputs_pairs = json.load(f)[:6]
-    annotator = PairwiseAutoAnnotator()
+    annotator = PairwiseAutoAnnotator(is_avoid_reannotations=False)
     annotated = annotator.annotate_pairs(outputs_pairs)
     expected_annotations = {'instruction': 'If you could help me write an email to my friends inviting them to '
                                             'dinner on Friday, it would be greatly appreciated.',
