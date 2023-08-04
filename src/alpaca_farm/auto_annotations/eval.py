@@ -7,6 +7,9 @@ import alpaca_eval.annotators as eval_annotators
 import alpaca_eval.utils as eval_utils
 import datasets
 import pandas as pd
+
+import alpaca_eval.annotators as eval_annotators
+import alpaca_eval.processors as eval_processors
 from alpaca_eval import metrics
 
 from .. import constants
@@ -15,6 +18,8 @@ __all__ = ["alpaca_leaderboard", "PairwiseAutoAnnotator"]
 
 CURRENT_DIR = Path(__file__).parent
 ANNOTATORS_CONFIG_DIR = CURRENT_DIR / "annotators"
+DUMMY_EXAMPLE_NOINPUT = dict(instruction="Solve: 1+1=", output_1="2", output_2="3")
+DUMMY_EXAMPLE_INPUT = dict(instruction="Solve:", output_1="2", input="1+1=", output_2="3")
 
 
 PRECOMPUTED_LEADERBOARD = {
@@ -177,12 +182,24 @@ class PairwiseAutoAnnotator(eval_annotators.PairwiseAnnotator):
 
 
 class SinglePairwiseAutoAnnotator(eval_annotators.SinglePairwiseAnnotator):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for i, processor in enumerate(self.processors):
+            # you need to use a batch padder that separates inputs and no inputs
+            if isinstance(processor, eval_processors.PaddingForBatchesProcessor):
+                self.processors[i] = PaddingForBatchesProcessorInputNoinput(
+                    batch_size=self.batch_size,
+                    padding_example_input=DUMMY_EXAMPLE_INPUT,
+                    padding_example_noinput=DUMMY_EXAMPLE_NOINPUT,
+                )
+
     def _get_prompt_template(self, prompt_template: dict[str, str]):
         # prompt_template will now be a dictionary of prompt templates of len 2 (one with and one without input)
         _get_prompt_template = super()._get_prompt_template
         return {k: _get_prompt_template(prompt) for k, prompt in prompt_template.items()}
 
-    def make_prompts(self, df_to_annotate, prompt_template=None):
+    def _make_prompts(self, df_to_annotate, prompt_template=None):
         if prompt_template is None:
             prompt_template = self.prompt_template
 
@@ -190,12 +207,12 @@ class SinglePairwiseAutoAnnotator(eval_annotators.SinglePairwiseAnnotator):
         df_with_inputs = df_to_annotate[arr_is_inputs]
         df_without_inputs = df_to_annotate[~arr_is_inputs]
 
-        prompts, df = super().make_prompts(
+        prompts, df = super()._make_prompts(
             df_without_inputs,
             prompt_template=prompt_template["without_inputs"],
         )
         if arr_is_inputs.any():
-            prompts_i, df_i = super().make_prompts(
+            prompts_i, df_i = super()._make_prompts(
                 df_with_inputs,
                 prompt_template=prompt_template["with_inputs"],
             )
@@ -203,3 +220,33 @@ class SinglePairwiseAutoAnnotator(eval_annotators.SinglePairwiseAnnotator):
             df = pd.concat([df, df_i], axis=0, ignore_index=True)
 
         return prompts, df
+
+
+class PaddingForBatchesProcessorInputNoinput(eval_processors.BaseProcessor):
+    def __init__(self, batch_size, padding_example_input: dict, padding_example_noinput: dict, **kwargs):
+        self.padded_noinput = eval_processors.PaddingForBatchesProcessor(
+            batch_size=batch_size, padding_example=padding_example_noinput, **kwargs
+        )
+        self.padded_input = eval_processors.PaddingForBatchesProcessor(
+            batch_size=batch_size, padding_example=padding_example_input, **kwargs
+        )
+        super().__init__(**kwargs)
+
+    def preprocess(self, df_to_annotate: pd.DataFrame) -> pd.DataFrame:
+        arr_is_inputs = (df_to_annotate["input"] != "") & (df_to_annotate["input"].notnull())
+        if arr_is_inputs.any():
+            # need to padd separately with and without inputs
+            padded_df_without_inputs = self.padded_noinput.preprocess(df_to_annotate[~arr_is_inputs].copy())
+            padded_df_with_inputs = self.padded_input.preprocess(df_to_annotate[arr_is_inputs].copy())
+
+            df_out = pd.concat([padded_df_without_inputs, padded_df_with_inputs], axis=0, ignore_index=True)
+        else:
+            df_out = self.padded_noinput.preprocess(df_to_annotate)
+
+        df_out["is_padding"] = df_out["is_padding"].astype(bool)
+
+        return df_out
+
+    def postprocess(self, df_to_annotate: pd.DataFrame) -> pd.DataFrame:
+        # independent of inputs
+        return self.padded_noinput.postprocess(df_to_annotate)
