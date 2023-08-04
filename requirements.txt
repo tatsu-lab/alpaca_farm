@@ -14,4 +14,4 @@ wandb
 torch>=1.13.1
 fire
 openai
-alpaca_eval
+alpaca_eval>=0.2.8
