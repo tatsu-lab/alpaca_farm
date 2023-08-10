@@ -29,7 +29,8 @@ from torch import nn
 from torch.distributed.fsdp import FullStateDictConfig
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import StateDictType
-from transformers.trainer import WEIGHTS_NAME, is_deepspeed_zero3_enabled
+from transformers.deepspeed import is_deepspeed_zero3_enabled
+from transformers.trainer import WEIGHTS_NAME
 
 from . import constants, logging, utils
 from .types import AnyPath, AnyPathOrNone

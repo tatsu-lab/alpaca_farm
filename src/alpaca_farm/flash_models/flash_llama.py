@@ -16,8 +16,14 @@ import logging
 from typing import Callable, List, Optional, Tuple, Union
 
 import einops
+import flash_attn
 import torch
-from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func
+
+if flash_attn.__version__ >= "2.0.0":
+    from flash_attn.flash_attn_interface import flash_attn_varlen_qkvpacked_func as flash_attn_qkvpacked_func
+else:
+    from flash_attn.flash_attn_interface import flash_attn_unpadded_qkvpacked_func as flash_attn_qkvpacked_func
+
 from torch import nn
 from transformers.modeling_outputs import BaseModelOutputWithPast
 from transformers.models.llama import modeling_llama
@@ -75,7 +81,7 @@ class LlamaAttention(modeling_llama.LlamaAttention):
                 torch.float16,
                 torch.bfloat16,
             ), f"Flash attention expected mixed precision. But found qkv dtype: {qkv.dtype}"
-            attn_output = flash_attn_unpadded_qkvpacked_func(
+            attn_output = flash_attn_qkvpacked_func(
                 qkv=qkv,
                 cu_seqlens=cu_seqlens,
                 max_seqlen=seqlens.max(),

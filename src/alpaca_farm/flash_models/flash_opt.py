@@ -15,9 +15,15 @@
 from typing import Callable, List, Optional, Tuple, Union
 
 import einops
+import flash_attn
 import torch
 import transformers
-from flash_attn.flash_attn_interface import flash_attn_unpadded_func
+
+if flash_attn.__version__ >= "2.0.0":
+    from flash_attn.flash_attn_interface import flash_attn_varlen_func as flash_attn_func
+else:
+    from flash_attn.flash_attn_interface import flash_attn_unpadded_func as flash_attn_func
+
 from torch import nn
 from transformers.models.opt import modeling_opt
 from transformers.utils import logging
@@ -54,7 +60,7 @@ class OPTDecoderLayer(modeling_opt.OPTDecoderLayer):
                 einops.rearrange(tensor, "nnz (h d) -> nnz h d", h=num_heads, d=head_dim)
                 for tensor in (query, key, value)
             )
-            hidden_states = flash_attn_unpadded_func(
+            hidden_states = flash_attn_func(
                 q=query,
                 k=key,
                 v=value,
