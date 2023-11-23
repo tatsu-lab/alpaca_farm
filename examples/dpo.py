@@ -1,7 +1,7 @@
 import os
 import pathlib
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import List, Literal
 
 import pandas as pd
 import transformers
@@ -51,18 +51,27 @@ class TrainingArguments(transformers.TrainingArguments):
             "Enforcing a consistent max length ensures memory usage is constant and predictable."
         },
     )
+    label_names: List[str] = field(
+        default_factory=lambda: [
+            "input_ids_w",
+            "labels_w",
+            "attention_mask_w",
+            "input_ids_l",
+            "labels_l",
+            "attention_mask_l",
+        ],
+        metadata={
+            "help": "Names of the labels in the dataset. "
+            "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
+            "By default, the trainer throws away columns it doesn't recognize when creating the "
+            "`train_dataloader` (see `_remove_unused_columns`). "
+        },
+    )
     padding: Literal["max_length", "longest"] = field(
         default="longest",
         metadata={
             "help": "Padding strategy. If 'max_length', pads to `model_max_length` always; this might lead to some "
             "redundant compute. If 'longest', pads to the longest sequence in the batch, capped by `model_max_length`."
-        },
-    )
-    initialize_model_on_cpu: bool = field(
-        default=False,
-        metadata={
-            "help": "Whether to initialize the model on CPU. "
-            "If True, models on all processes will be first initialized on CPU; this is RAM-costly but faster."
         },
     )
     resume_from_checkpoint: bool = field(default=False, metadata={"help": "If True, loads from last check point."})
