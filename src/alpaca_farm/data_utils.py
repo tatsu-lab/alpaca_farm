@@ -21,8 +21,10 @@ from .data_postprocessor import RewardConditioningPromptPostprocessor
 from .data_preprocessor import (
     BinaryRewardModelingDataset,
     DataCollatorForBinaryRewardModelingDataset,
+    DataCollatorForDPODataset,
     DataCollatorForSFTDataset,
     DataCollatorForStackableDataset,
+    DPODataset,
     QueryDataset,
     SFTDataset,
     split_train_into_train_and_eval,
@@ -133,7 +135,20 @@ def make_dpo_data_module(
     data_args,
     training_args,
 ) -> dict:
-    # TODO: The dataset should have batches of tensors
-    #   input_ids, labels, attention_mask for winning and losing sequences.
-    #   data_collator should be just like for SFT but for winning and losing sequences.
-    return dict()
+    prompt_dict = utils.jload(data_args.prompt_dict_path)
+
+    alpaca_human_preference = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
+    train_df = pd.DataFrame(alpaca_human_preference["preference"])
+
+    train_dataset = DPODataset(
+        df=train_df,
+        prompt_dict=prompt_dict,
+        tokenizer=tokenizer,
+    )
+    train_dataset, eval_dataset = split_train_into_train_and_eval(
+        train_dataset=train_dataset,
+        eval_size=data_args.eval_size,
+        seed=training_args.seed,
+    )
+    data_collator = DataCollatorForDPODataset(tokenizer=tokenizer)
+    return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=data_collator)
