@@ -278,11 +278,10 @@ def preprocess_for_dpo(
     df_postprocessor=None,
     verbose=True,
 ) -> dict[str, Union[torch.Tensor, Sequence[torch.Tensor]]]:
-    df["output_w"] = np.where(df["preference"] == 1, df["output_1"], df["output_2"])
-    df["output_l"] = np.where(df["preference"] == 1, df["output_2"], df["output_1"])
+    output_1, output_2, preference = df["output_1"], df["output_2"], df["preference"]
 
-    df_w = df[["instruction", "input", "output_w"]]
-    df_l = df[["instruction", "input", "output_l"]]
+    df_w = df.assign(output=np.where(preference == 1, output_1, output_2))[["instruction", "input", "output"]]
+    df_l = df.assign(output=np.where(preference == 2, output_1, output_2))[["instruction", "input", "output"]]
 
     tensors_w = preprocess_for_sft(
         df=df_w, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor, verbose=verbose
