@@ -121,7 +121,7 @@ class LlamaDecoderLayer(modeling_llama.LlamaDecoderLayer):
         pad_back: Optional[Callable] = None,
     ):
         residual = hidden_states
-        hidden_states = self.input_layernorm(hidden_states)
+        hidden_states = apex_patch.apex_rmsnorm(self.input_layernorm, hidden_states)
         hidden_states, self_attn_weights, present_key_value = self.self_attn(  # noqa
             hidden_states=hidden_states,
             seqlens=seqlens,
