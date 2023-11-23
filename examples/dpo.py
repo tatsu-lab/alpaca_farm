@@ -55,22 +55,6 @@ class TrainingArguments(transformers.TrainingArguments):
             "Enforcing a consistent max length ensures memory usage is constant and predictable."
         },
     )
-    label_names: List[str] = field(
-        default_factory=lambda: [
-            "input_ids_w",
-            "labels_w",
-            "attention_mask_w",
-            "input_ids_l",
-            "labels_l",
-            "attention_mask_l",
-        ],
-        metadata={
-            "help": "Names of the labels in the dataset. "
-            "This is needed to get transformers.Trainer to not throw those tensors away before `compute_loss`."
-            "By default, the trainer throws away columns it doesn't recognize when creating the "
-            "`train_dataloader` (see `_remove_unused_columns`). "
-        },
-    )
     padding: Literal["max_length", "longest"] = field(
         default="longest",
         metadata={
@@ -87,6 +71,7 @@ class TrainingArguments(transformers.TrainingArguments):
             "Use fast tokenizer only if you can live with that."
         },
     )
+    beta: float = field(default=1e-2, metadata={"help": "Beta for the KL divergence."})
 
 
 def main():
