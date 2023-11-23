@@ -31,6 +31,10 @@ class DataArguments:
         default="alpaca_noisy_multi_preference",
         metadata={"help": "Name of the dataset. Fetches the human or GPT-4 preference data."},
     )
+    eval_size: int = field(
+        default=500,
+        metadata={"help": "Number of examples to split out from training to use for evaluation."},
+    )
     prompt_dict_path: str = field(
         default=pathlib.Path(__file__).parent / "prompts" / "v0_inputs_noinputs.json",
         metadata={"help": "Path to the dictionary for the prompt to format examples."},
