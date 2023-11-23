@@ -1,13 +1,18 @@
-import contextlib
 import os
 import pathlib
 from dataclasses import dataclass, field
-from typing import List, Literal, Optional
+from typing import Literal
 
+import pandas as pd
 import transformers
 
 from alpaca_farm import common, constants, data_utils, logging, utils
 from alpaca_farm.rl.dpo_trainer import Trainer
+
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", None)
+pd.set_option("display.max_colwidth", None)
 
 logger = logging.get_logger(__name__)
 
