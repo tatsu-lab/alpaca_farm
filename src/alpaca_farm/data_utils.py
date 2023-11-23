@@ -35,7 +35,7 @@ def make_supervised_data_module(
     tokenizer: transformers.PreTrainedTokenizer,
     data_args,
     training_args,
-):
+) -> dict:
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
     alpaca_instructions = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
@@ -72,7 +72,7 @@ def make_binary_reward_modeling_data_module(
     tokenizer: transformers.PreTrainedTokenizer,
     data_args,
     training_args,
-):
+) -> dict:
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
     alpaca_human_preference = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
@@ -97,7 +97,7 @@ def make_rl_data_module(
     tokenizer: transformers.PreTrainedTokenizer,
     data_args,
     training_args,
-):
+) -> dict:
     prompt_dict = utils.jload(data_args.prompt_dict_path)
 
     alpaca_instructions = datasets.load_dataset(data_args.dataset_path, data_args.dataset_name)
@@ -126,3 +126,14 @@ def make_rl_data_module(
         prompt_postprocessor=prompt_postprocessor,
     )
     return dict(train_dataset=train_dataset, eval_dataset=eval_dataset, data_collator=DataCollatorForStackableDataset())
+
+
+def make_dpo_data_module(
+    tokenizer: transformers.PreTrainedTokenizer,
+    data_args,
+    training_args,
+) -> dict:
+    # TODO: The dataset should have batches of tensors
+    #   input_ids, labels, attention_mask for winning and losing sequences.
+    #   data_collator should be just like for SFT but for winning and losing sequences.
+    return dict()
