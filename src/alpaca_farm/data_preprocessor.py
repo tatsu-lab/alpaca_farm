@@ -14,7 +14,7 @@
 
 import copy
 import dataclasses
-from typing import Callable, Dict, Optional, Sequence, Union
+from typing import Callable, Dict, List, Optional, Sequence, Union
 
 import einops
 import numpy as np
@@ -573,3 +573,33 @@ class DPODataset(Dataset):
 
     def __getitem__(self, i) -> Dict[str, Tensor]:
         return {key: value[i] for key, value in self.tensors.items()}
+
+
+@dataclasses.dataclass
+class DataCollatorForDPODataset(object):
+    tokenizer: transformers.PreTrainedTokenizer
+
+    def _pad_input_ids_and_labels(self, input_ids: List[Tensor], labels: List[Tensor]) -> tuple[Tensor, Tensor, Tensor]:
+        # This is the same things as done in `DataCollatorForSFTDataset`; repeat for better readability.
+        input_ids = torch.nn.utils.rnn.pad_sequence(
+            input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id
+        )
+        labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True, padding_value=constants.IGNORE_INDEX)
+        # When sequences are right padded, `attention_mask` is only useful for T5 training.
+        attention_mask = input_ids.ne(self.tokenizer.pad_token_id).long()
+        return input_ids, labels, attention_mask
+
+    def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
+        input_ids_w, labels_w, input_ids_l, labels_l = tuple(
+            [instance[key] for instance in instances] for key in ("input_ids_w", "labels_w", "input_ids_l", "labels_l")
+        )
+        input_ids_w, labels_w, attention_mask_w = self._pad_input_ids_and_labels(input_ids_w, labels_w)
+        input_ids_l, labels_l, attention_mask_l = self._pad_input_ids_and_labels(input_ids_l, labels_l)
+        return dict(
+            input_ids_w=input_ids_w,
+            labels_w=labels_w,
+            attention_mask_w=attention_mask_w,
+            input_ids_l=input_ids_l,
+            labels_l=labels_l,
+            attention_mask_l=attention_mask_l,
+        )
