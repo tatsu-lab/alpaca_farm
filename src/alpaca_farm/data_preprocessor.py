@@ -17,6 +17,7 @@ import dataclasses
 from typing import Callable, Dict, Optional, Sequence, Union
 
 import einops
+import numpy as np
 import pandas as pd
 import torch
 import transformers
@@ -268,6 +269,33 @@ def preprocess_for_reward_modeling(
         logger.warning(f"Tokenization metadata:\n{utils.jdumps(packaged_data['tokenization_metadata'])}")
 
     return packaged_data
+
+
+def preprocess_for_dpo(
+    df: pd.DataFrame,
+    prompt_dict: dict,
+    tokenizer: transformers.PreTrainedTokenizer,
+    df_postprocessor=None,
+    verbose=True,
+) -> dict[str, Union[torch.Tensor, Sequence[torch.Tensor]]]:
+    df["output_w"] = np.where(df["preference"] == 1, df["output_1"], df["output_2"])
+    df["output_l"] = np.where(df["preference"] == 1, df["output_2"], df["output_1"])
+
+    df_w = df[["instruction", "input", "output_w"]]
+    df_l = df[["instruction", "input", "output_l"]]
+
+    tensors_w = preprocess_for_sft(
+        df=df_w, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor, verbose=verbose
+    )
+    tensors_l = preprocess_for_sft(
+        df=df_l, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor, verbose=verbose
+    )
+    return dict(
+        input_ids_w=tensors_w["input_ids"],
+        labels_w=tensors_w["labels"],
+        input_ids_l=tensors_l["input_ids"],
+        labels_l=tensors_l["labels"],
+    )
 
 
 def _get_generator(seed: int) -> torch.Generator:
@@ -526,3 +554,23 @@ class QueryResponseDataset(Dataset):
 class DataCollatorForStackableDataset(object):
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
         return {key: torch.stack([instance[key] for instance in instances]) for key in instances[0].keys()}
+
+
+class DPODataset(Dataset):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        prompt_dict: dict,
+        tokenizer: transformers.PreTrainedTokenizer,
+        df_postprocessor: Optional[Callable] = None,
+    ):
+        super(DPODataset, self).__init__()
+        self.tensors = preprocess_for_dpo(
+            df=df, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor
+        )
+
+    def __len__(self):
+        return len(next(iter(self.tensors.values())))
+
+    def __getitem__(self, i) -> Dict[str, Tensor]:
+        return {key: value[i] for key, value in self.tensors.items()}
