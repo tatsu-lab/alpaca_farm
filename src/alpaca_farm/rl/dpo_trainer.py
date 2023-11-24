@@ -1,8 +1,16 @@
 import copy
+import functools
+import inspect
 
 import torch
 import torch.nn.functional as F
 import transformers
+from torch.distributed.fsdp.fully_sharded_data_parallel import CPUOffload
+from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.fully_sharded_data_parallel import MixedPrecision
+from torch.distributed.fsdp.wrap import size_based_auto_wrap_policy, transformer_auto_wrap_policy
+from transformers.trainer_pt_utils import get_module_class_from_name
+from transformers.trainer_utils import FSDPOption
 
 from .. import common
 
@@ -13,8 +21,64 @@ class Trainer(transformers.Trainer):
     def __init__(self, model, args, *argv, **kwargs):
         args.label_names = LABEL_NAMES
         super().__init__(model, args, *argv, **kwargs)
-        # TODO: Load model on GPU and shard it.
-        self.ref_model = copy.deepcopy(model).to("cuda")
+        self.ref_model = self._prepare_model(copy.deepcopy(model))
+
+    def _prepare_model(self, model) -> FSDP:
+        """Generic code that prepares a model by sharding according to FSDP and distributing the shards to devices.
+
+        Run this after `super().__init__` finished.
+        This is a copy of a code portion from `Trainer.__init__` from transformers.
+        """
+        if FSDPOption.OFFLOAD in self.args.fsdp:
+            cpu_offload = CPUOffload(offload_params=True)
+        else:
+            cpu_offload = CPUOffload(offload_params=False)
+
+        auto_wrap_policy = None
+
+        if FSDPOption.AUTO_WRAP in self.args.fsdp:
+            if self.args.fsdp_config["fsdp_min_num_params"] > 0:
+                auto_wrap_policy = functools.partial(
+                    size_based_auto_wrap_policy, min_num_params=self.args.fsdp_config["fsdp_min_num_params"]
+                )
+            elif self.args.fsdp_config.get("fsdp_transformer_layer_cls_to_wrap", None) is not None:
+                transformer_cls_to_wrap = set()
+                for layer_class in self.args.fsdp_config["fsdp_transformer_layer_cls_to_wrap"]:
+                    transformer_cls = get_module_class_from_name(model, layer_class)
+                    if transformer_cls is None:
+                        raise Exception("Could not find the transformer layer class to wrap in the model.")
+                    else:
+                        transformer_cls_to_wrap.add(transformer_cls)
+                auto_wrap_policy = functools.partial(
+                    transformer_auto_wrap_policy,
+                    # Transformer layer class to wrap
+                    transformer_layer_cls=transformer_cls_to_wrap,
+                )
+        mixed_precision_policy = None
+        dtype = None
+        if self.args.fp16:
+            dtype = torch.float16
+        elif self.args.bf16:
+            dtype = torch.bfloat16
+        if dtype is not None:
+            mixed_precision_policy = MixedPrecision(param_dtype=dtype, reduce_dtype=dtype, buffer_dtype=dtype)
+        if not isinstance(model, FSDP):
+            # XXX: Breaking the self.model convention but I see no way around it for now.
+            signature = inspect.signature(FSDP.__init__).parameters.keys()
+            kwargs = {}
+            for arg in ["limit_all_gathers", "forward_prefetch", "backward_prefetch"]:
+                if arg in signature:
+                    kwargs[arg] = getattr(self, arg)
+            model = FSDP(
+                model,
+                sharding_strategy=self.fsdp,
+                cpu_offload=cpu_offload,
+                auto_wrap_policy=auto_wrap_policy,
+                mixed_precision=mixed_precision_policy,
+                device_id=self.args.device,
+                **kwargs,
+            )
+        return model
 
     def compute_loss(self, model, inputs, return_outputs=False):
         # TODO: This implementation is simple and readable, but it's not efficient.
