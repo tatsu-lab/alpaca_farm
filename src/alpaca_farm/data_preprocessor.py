@@ -14,9 +14,10 @@
 
 import copy
 import dataclasses
-from typing import Callable, Dict, Optional, Sequence, Union
+from typing import Callable, Dict, List, Optional, Sequence, Union
 
 import einops
+import numpy as np
 import pandas as pd
 import torch
 import transformers
@@ -268,6 +269,32 @@ def preprocess_for_reward_modeling(
         logger.warning(f"Tokenization metadata:\n{utils.jdumps(packaged_data['tokenization_metadata'])}")
 
     return packaged_data
+
+
+def preprocess_for_dpo(
+    df: pd.DataFrame,
+    prompt_dict: dict,
+    tokenizer: transformers.PreTrainedTokenizer,
+    df_postprocessor=None,
+    verbose=True,
+) -> dict[str, Union[torch.Tensor, Sequence[torch.Tensor]]]:
+    output_1, output_2, preference = df["output_1"], df["output_2"], df["preference"]
+
+    df_w = df.assign(output=np.where(preference == 1, output_1, output_2))[["instruction", "input", "output"]]
+    df_l = df.assign(output=np.where(preference == 2, output_1, output_2))[["instruction", "input", "output"]]
+
+    tensors_w = preprocess_for_sft(
+        df=df_w, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor, verbose=verbose
+    )
+    tensors_l = preprocess_for_sft(
+        df=df_l, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor, verbose=verbose
+    )
+    return dict(
+        input_ids_w=tensors_w["input_ids"],
+        labels_w=tensors_w["labels"],
+        input_ids_l=tensors_l["input_ids"],
+        labels_l=tensors_l["labels"],
+    )
 
 
 def _get_generator(seed: int) -> torch.Generator:
@@ -526,3 +553,53 @@ class QueryResponseDataset(Dataset):
 class DataCollatorForStackableDataset(object):
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
         return {key: torch.stack([instance[key] for instance in instances]) for key in instances[0].keys()}
+
+
+class DPODataset(Dataset):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        prompt_dict: dict,
+        tokenizer: transformers.PreTrainedTokenizer,
+        df_postprocessor: Optional[Callable] = None,
+    ):
+        super(DPODataset, self).__init__()
+        self.tensors = preprocess_for_dpo(
+            df=df, prompt_dict=prompt_dict, tokenizer=tokenizer, df_postprocessor=df_postprocessor
+        )
+
+    def __len__(self):
+        return len(next(iter(self.tensors.values())))
+
+    def __getitem__(self, i) -> Dict[str, Tensor]:
+        return {key: value[i] for key, value in self.tensors.items()}
+
+
+@dataclasses.dataclass
+class DataCollatorForDPODataset(object):
+    tokenizer: transformers.PreTrainedTokenizer
+
+    def _pad_input_ids_and_labels(self, input_ids: List[Tensor], labels: List[Tensor]) -> tuple[Tensor, Tensor, Tensor]:
+        # This is the same things as done in `DataCollatorForSFTDataset`; repeat for better readability.
+        input_ids = torch.nn.utils.rnn.pad_sequence(
+            input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id
+        )
+        labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True, padding_value=constants.IGNORE_INDEX)
+        # When sequences are right padded, `attention_mask` is only useful for T5 training.
+        attention_mask = input_ids.ne(self.tokenizer.pad_token_id).long()
+        return input_ids, labels, attention_mask
+
+    def __call__(self, instances: Sequence[Dict]) -> Dict[str, Tensor]:
+        input_ids_w, labels_w, input_ids_l, labels_l = tuple(
+            [instance[key] for instance in instances] for key in ("input_ids_w", "labels_w", "input_ids_l", "labels_l")
+        )
+        input_ids_w, labels_w, attention_mask_w = self._pad_input_ids_and_labels(input_ids_w, labels_w)
+        input_ids_l, labels_l, attention_mask_l = self._pad_input_ids_and_labels(input_ids_l, labels_l)
+        return dict(
+            input_ids_w=input_ids_w,
+            labels_w=labels_w,
+            attention_mask_w=attention_mask_w,
+            input_ids_l=input_ids_l,
+            labels_l=labels_l,
+            attention_mask_l=attention_mask_l,
+        )
