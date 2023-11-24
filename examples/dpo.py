@@ -71,7 +71,7 @@ class TrainingArguments(transformers.TrainingArguments):
             "Use fast tokenizer only if you can live with that."
         },
     )
-    beta: float = field(default=1e-2, metadata={"help": "Beta for the KL divergence."})
+    beta: float = field(default=1e-1, metadata={"help": "Beta for the KL divergence."})
 
 
 def main():
