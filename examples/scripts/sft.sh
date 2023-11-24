@@ -1,3 +1,5 @@
+#!/bin/bash
+
 output_dir=$1
 run_name=$2
 model_name_or_path=$3
