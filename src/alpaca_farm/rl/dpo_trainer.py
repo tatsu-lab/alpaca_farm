@@ -16,7 +16,7 @@ class Trainer(transformers.Trainer):
         self.ref_model = self._wrap_model(copy.deepcopy(model)).eval()
 
     def compute_loss(self, model, inputs, return_outputs=False):
-        # TODO: This implementation is simple and readable, but it's not efficient.
+        # This implementation is simple and readable, but it's not efficient.
         #  Since the instruction+input is shared for the winning and losing sequences, one can in principle
         #  just do a single forward pass on this part for model and ref_model, instead of doing the full forward
         #  twice (one for winning and one for losing sequence) for model and ref_model.
@@ -28,6 +28,8 @@ class Trainer(transformers.Trainer):
         #       (but do temporarily retain the kv cache).
         #       There's an explicit speed/memory tradeoff here -- retaining kv cache saves FLOPs but uses more memory.
         #   5. Compute the loss.
+        # If memory is not a concern, then the winning and losing sequences should be batched together so the logits
+        # can be computed in a single forward call.
         input_ids_w, labels_w, attention_mask_w, input_ids_l, labels_l, attention_mask_l = common.unpack_dict(
             inputs, LABEL_NAMES
         )
@@ -44,6 +46,6 @@ class Trainer(transformers.Trainer):
         logprobs_w = F.cross_entropy(logits_w.transpose(-1, -2), labels_w, reduction="none").sum(-1)
         logprobs_l = F.cross_entropy(logits_l.transpose(-1, -2), labels_l, reduction="none").sum(-1)
 
-        preference_logits = self.args.beta * ((logprobs_w - ref_logprobs_w) - (logprobs_l - ref_logprobs_l))
-        loss = -F.logsigmoid(preference_logits).mean(0)
-        return loss
+        logits = self.args.beta * ((logprobs_w - ref_logprobs_w) - (logprobs_l - ref_logprobs_l))
+        loss = -F.logsigmoid(logits).mean(0)
+        return (loss, dict(logits=logits)) if return_outputs else loss
