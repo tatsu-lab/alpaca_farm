@@ -294,6 +294,17 @@ bash examples/scripts/rlhf_quark.sh \
   <kl_coef>
 ```
 
+### [Direct Preference Optimization (DPO)](https://arxiv.org/abs/2305.18290)
+
+To replicate our DPO results for the AlpacaFarm evaluation suite, run
+
+```bash
+bash examples/scripts/rlhf_quark.sh \
+  <your_output_dir_for_dpo> \
+  <your_wandb_run_name> \
+  <your_output_dir_for_sft10k>
+```
+
 ### OpenAI models
 
 To run the OpenAI reference models with our prompts and decoding hyperparameters, run
