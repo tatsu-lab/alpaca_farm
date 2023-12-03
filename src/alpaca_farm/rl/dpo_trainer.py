@@ -45,6 +45,8 @@ class Trainer(transformers.Trainer):
         logits_l = model(input_ids=input_ids_l, attention_mask=attention_mask_l).logits[..., :-1, :]
         logprobs_w = -F.cross_entropy(logits_w.transpose(-1, -2), labels_w, reduction="none").sum(-1)
         logprobs_l = -F.cross_entropy(logits_l.transpose(-1, -2), labels_l, reduction="none").sum(-1)
+
         logits = self.args.beta * ((logprobs_w - ref_logprobs_w) - (logprobs_l - ref_logprobs_l))
         loss = -F.logsigmoid(logits).mean(0)
+
         return (loss, dict(logits=logits)) if return_outputs else loss
