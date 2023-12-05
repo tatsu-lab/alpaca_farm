@@ -299,7 +299,7 @@ bash examples/scripts/rlhf_quark.sh \
 To replicate our DPO results for the AlpacaFarm evaluation suite, run
 
 ```bash
-bash examples/scripts/rlhf_quark.sh \
+bash examples/scripts/dpo.sh \
   <your_output_dir_for_dpo> \
   <your_wandb_run_name> \
   <your_output_dir_for_sft10k>
