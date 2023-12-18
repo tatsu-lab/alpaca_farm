@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import re
 import time
 import types
 import warnings
@@ -26,13 +25,16 @@ import torch.distributed as dist
 import transformers
 from accelerate.utils import convert_outputs_to_fp32, is_torch_version
 from torch import nn
-from torch.distributed.fsdp import FullStateDictConfig
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-from torch.distributed.fsdp import StateDictType
-from transformers.trainer import WEIGHTS_NAME, is_deepspeed_zero3_enabled
+from torch.distributed.fsdp import FullStateDictConfig, FullyShardedDataParallel as FSDP, StateDictType
+from transformers.trainer import WEIGHTS_NAME
 
-from . import constants, logging, utils
-from .types import AnyPath, AnyPathOrNone
+if transformers.__version__ <= "4.29.2":
+    from transformers.trainer import is_deepspeed_zero3_enabled
+else:
+    from transformers.integrations import is_deepspeed_zero3_enabled
+
+from . import logging
+from .types import AnyPath
 
 logger = logging.get_logger(__name__)
 
@@ -117,7 +119,11 @@ def make_generative_lm(
     else:
         model_cls = transformers.LlamaForCausalLM
 
-    return model_cls.from_pretrained(model_name_or_path, **kwargs)
+    try:
+        model = model_cls.from_pretrained(model_name_or_path, **kwargs)
+    except AttributeError as e:
+        model = transformers.AutoModelForCausalLM.from_pretrained(model_name_or_path, **kwargs, trust_remote_code=True)
+    return model
 
 
 def let_model_save_mem_when_zero_grad(model: nn.Module):
