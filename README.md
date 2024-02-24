@@ -9,6 +9,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+
+**Changing auto-annotators**: `text-davinci-003` is [now depreciated](https://platform.openai.com/docs/deprecations) by OpenAI, as a result we can't use the original pool of annotators for automatically generating preferences (for fine-tuning or evaluation). We therefore switched to the GPT-4 annotator from [AlpacaEval 1](https://github.com/tatsu-lab/alpaca_eval). All results should thus be compared to models from AlpacaEval 1 rather than the original AlpacaFarm results. Note that overoptimization might not be seen in this new setting (see Figure 4 in the [paper](https://arxiv.org/abs/2305.14387)). We are sorry for the invonvenience caused.
+
+---
+
 Research and development on learning from human feedback is difficult because methods
 like [RLHF](https://arxiv.org/abs/2203.02155) are complex and costly to run.
 AlpacaFarm is a simulator that enables research and development on learning from feedback at a fraction of the usual

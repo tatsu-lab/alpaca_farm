@@ -12,4 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .eval import PairwiseAutoAnnotator, alpaca_leaderboard
+# set the environment variable to use AlpacaEval1 IS_ALPACA_EVAL_2=False
+import os
+os.environ["IS_ALPACA_EVAL_2"] = "False"
+
+from .eval import alpaca_leaderboard, PairwiseAutoAnnotator
