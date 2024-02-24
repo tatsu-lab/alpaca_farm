@@ -10,7 +10,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
-**Changing auto-annotators**: `text-davinci-003` is [now depreciated](https://platform.openai.com/docs/deprecations) by OpenAI, as a result we can't use the original pool of annotators for automatically generating preferences (for fine-tuning or evaluation). We therefore switched to the GPT-4 annotator from [AlpacaEval 1](https://github.com/tatsu-lab/alpaca_eval). All results should thus be compared to models from AlpacaEval 1 rather than the original AlpacaFarm results. Note that overoptimization might not be seen in this new setting (see Figure 4 in the [paper](https://arxiv.org/abs/2305.14387)). We are sorry for the invonvenience caused.
+**Changing auto-annotators**: `text-davinci-003` is [now depreciated](https://platform.openai.com/docs/deprecations) by OpenAI, as a result we can't use the original pool of annotators for automatically generating preferences (for fine-tuning or evaluation). We therefore switched to the GPT-4 annotator from [AlpacaEval 1](https://github.com/tatsu-lab/alpaca_eval). All results should thus be compared to models from AlpacaEval 1 rather than the original AlpacaFarm results. Note that over-optimization might not be seen in this new setting (see Figure 4 in the [paper](https://arxiv.org/abs/2305.14387)). We are sorry for the inconvenience caused.
 
 ---
 
