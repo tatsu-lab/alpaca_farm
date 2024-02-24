@@ -16,7 +16,7 @@ def test_example():
                 "Friday. We'll meet at 7:00 PM at [location]. I look forward to seeing you there. \r\n\r\nBest,\r\n[Name]",
     'output_2': "Hey everyone! \n\nI'm hosting a dinner party this Friday night and I'd love for all of you to come "
                 "over. We'll have a delicious spread of food and some great conversations. \n\nLet me know if you can make it - I'd love to see you all there!\n\nCheers,\n[Your Name]",
-    'annotator': 'chatgpt_2',
+    'annotator': 'alpaca_eval_gpt4',
     'preference': 2}
     for k,v in expected_annotations.items():
         assert annotated[-1][k] == v

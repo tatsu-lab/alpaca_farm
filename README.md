@@ -9,6 +9,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+
+**Changing auto-annotators**: `text-davinci-003` is [now depreciated](https://platform.openai.com/docs/deprecations) by OpenAI, as a result, we can't use the original pool of annotators for automatically generating preferences (for fine-tuning or evaluation). We, therefore, switched to the GPT-4 annotator from [AlpacaEval 1](https://github.com/tatsu-lab/alpaca_eval). All results should thus be compared to models from AlpacaEval 1 rather than the original AlpacaFarm results. Note that over-optimization might not be seen in this new setting (see Figure 4 in the [paper](https://arxiv.org/abs/2305.14387)). We are sorry for the inconvenience caused.
+
+---
+
 Research and development on learning from human feedback is difficult because methods
 like [RLHF](https://arxiv.org/abs/2203.02155) are complex and costly to run.
 AlpacaFarm is a simulator that enables research and development on learning from feedback at a fraction of the usual
@@ -151,21 +156,15 @@ path_to_outputs = "examples/data/eval_gpt-3.5-turbo-0301.json"
 # [{'instruction': 'What are the names of some famous actors that started their careers on Broadway?', 'input': '', 'output': 'Some famous actors that started their careers on Broadway are Hugh Jackman, Meryl Streep, Denzel Washington, Audra McDonald, and Lin-Manuel Miranda.', 'generator': 'gpt-3.5-turbo-0301', 'dataset': 'helpful_base', 'datasplit': 'eval'},
 # ...]
 
-alpaca_leaderboard(path_or_all_outputs=path_to_outputs, name="My fancy model", is_print_metrics=True)
-#                      n_draws  n_total  n_wins  n_wins_base  standard_error  win_rate
-# GPT4                   17.00   804.00  631.00       156.00            1.40     79.54
-# ChatGPT                 9.00   805.00  503.00       293.00            1.69     63.04
-# My fancy model          9.00   803.00  497.00       297.00            1.70     62.45
-# RLHF PPO                9.00   805.00  392.00       404.00            1.75     49.25
-# SFT 52k (Alpaca 7B)    16.00   805.00  312.00       477.00            1.71     39.75
-# SFT 10k                19.00   802.00  278.00       505.00            1.67     35.85
-# Davinci001              0.00   805.00  201.00       604.00            1.53     24.97
-# LLaMA 7B                0.00   775.00   98.00       677.00            1.19     12.65
+alpaca_leaderboard(path_to_outputs, name="My fancy model")
+#                               win_rate  standard_error  n_total  avg_length
+# gpt35_turbo_instruct             81.71            1.33      801        1018
+# alpaca-farm-ppo-sim-gpt4-20k     44.10            1.74      805         511
+# My fancy model                   41.54            2.01      597         327
+# alpaca-farm-ppo-human            41.24            1.73      805         803
+# alpaca-7b                        26.46            1.54      805         396
+# text_davinci_001                 15.17            1.24      804         296
 ```
-
-If you want to compare against our baseline model (Davinci003 with
-our [prompt](https://github.com/tatsu-lab/alpaca_farm/blob/main/examples/prompts/v0_inputs_noinputs.json)) on your own
-data, you can decode it using [main_oai_baselines](#openai-models).
 
 ## Running reference methods
 
@@ -370,5 +369,18 @@ Please consider citing our work if you use the data or code in this repo.
       eprint={2305.14387},
       archivePrefix={arXiv},
       primaryClass={cs.LG}
+}
+```
+
+If you use `alpaca-farm>=0.2.0` make sure to specify that the annotator changed (as `text-davinci-003` is depreciated). The preferences and win-rates are now from AlpacaEval 1 and are not comparable to the numbers from our paper. You can cite AlpacaEval as:
+
+```
+@misc{alpaca_eval,
+  author = {Xuechen Li and Tianyi Zhang and Yann Dubois and Rohan Taori and Ishaan Gulrajani and Carlos Guestrin and Percy Liang and Tatsunori B. Hashimoto },
+  title = {AlpacaEval: An Automatic Evaluator of Instruction-following Models},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/tatsu-lab/alpaca_eval}}
 }
 ```
